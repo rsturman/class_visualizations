@@ -3,11 +3,584 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tokenization & Embedding Visualization</title>
+    <title>From Words to Meaning Space</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Source+Sans+3:wght@300;400;500;600&family=Source+Code+Pro:wght@400;500&display=swap');
+
+      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+        --sans: 'Source Sans 3', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        --mono: 'Source Code Pro', 'Menlo', 'Consolas', monospace;
+
+        --bg: #ffffff;
+        --bg-warm: #faf8f5;
+        --bg-annotation: #f2efe8;
+        --border: #e0ddd5;
+        --border-light: #eceae4;
+        --rule: #ccc8bc;
+
+        --text-primary: #1a1a1a;
+        --text-secondary: #5a5a5a;
+        --text-tertiary: #888888;
+        --text-caption: #999999;
+
+        --accent-blue: #326fa8;
+        --accent-blue-light: #e8f0fa;
+        --accent-red: #c43b2e;
+        --accent-red-light: #fcecea;
+        --accent-amber: #b38600;
+        --accent-amber-light: #fdf5e0;
+        --accent-teal: #1a8a7d;
+        --accent-teal-light: #e6f5f3;
+        --accent-purple: #6b4c9a;
+        --accent-purple-light: #f0ecf5;
+
+        /* Cluster palette — muted, print-friendly */
+        --cluster-1: #326fa8;
+        --cluster-2: #c43b2e;
+        --cluster-3: #6b4c9a;
+        --cluster-4: #b38600;
+        --cluster-5: #1a8a7d;
+        --cluster-6: #888888;
+      }
+
+      body {
+        font-family: var(--sans);
+        background: var(--bg);
+        color: var(--text-primary);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+
+      /* Typography */
+      .headline {
+        font-family: var(--serif);
+        font-weight: 700;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
+        text-align: left;
+        margin-bottom: 8px;
+      }
+
+      .deck {
+        font-family: var(--serif);
+        font-weight: 300;
+        font-size: 20px;
+        line-height: 1.45;
+        color: var(--text-secondary);
+        margin-bottom: 32px;
+      }
+
+      .section-label {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+      }
+
+      .section-title {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 22px;
+        color: var(--text-primary);
+        line-height: 1.3;
+      }
+
+      .body-text {
+        font-family: var(--sans);
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--text-secondary);
+      }
+
+      .caption {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--text-caption);
+      }
+
+      .mono {
+        font-family: var(--mono);
+      }
+
+      /* Dividers */
+      .rule {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 32px 0;
+      }
+
+      .rule-heavy {
+        border: none;
+        border-top: 3px solid var(--text-primary);
+        margin: 32px 0 16px;
+      }
+
+      /* Tabs */
+      .tab-nav {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 32px;
+      }
+
+      .tab-btn {
+        font-family: var(--sans);
+        font-weight: 500;
+        font-size: 15px;
+        color: var(--text-tertiary);
+        background: none;
+        border: none;
+        padding: 12px 24px;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -1px;
+        transition: color 0.2s, border-color 0.2s;
+      }
+
+      .tab-btn:hover {
+        color: var(--text-primary);
+      }
+
+      .tab-btn.active {
+        color: var(--text-primary);
+        font-weight: 600;
+        border-bottom-color: var(--text-primary);
+      }
+
+      .tab-step {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--text-caption);
+        display: block;
+        margin-top: 2px;
+      }
+
+      /* Cards */
+      .card {
+        background: var(--bg);
+        border: 1px solid var(--border-light);
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+
+      .card-warm {
+        background: var(--bg-warm);
+        border: 1px solid var(--border);
+        padding: 20px 24px;
+        margin-bottom: 24px;
+      }
+
+      .annotation-box {
+        background: var(--bg-annotation);
+        border-left: 3px solid var(--accent-amber);
+        padding: 16px 20px;
+        margin-bottom: 24px;
+      }
+
+      .annotation-box .body-text {
+        color: var(--text-secondary);
+        font-size: 14px;
+      }
+
+      .insight-box {
+        background: var(--bg-warm);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding: 20px 24px;
+        margin: 24px 0;
+      }
+
+      /* Buttons / selectors */
+      .example-btn {
+        font-family: var(--mono);
+        font-size: 13px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 8px 14px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+      }
+
+      .example-btn:hover {
+        background: var(--bg-warm);
+        border-color: var(--rule);
+      }
+
+      .example-btn.active {
+        background: var(--text-primary);
+        color: #fff;
+        border-color: var(--text-primary);
+      }
+
+      /* Tokens */
+      .token-pill {
+        display: inline-flex;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 500;
+        padding: 6px 14px;
+        border: 1.5px solid var(--accent-blue);
+        background: var(--accent-blue-light);
+        color: var(--accent-blue);
+        transition: transform 0.15s, box-shadow 0.15s;
+        position: relative;
+      }
+
+      .token-pill:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(50,111,168,0.15);
+      }
+
+      .token-pill .token-quote {
+        opacity: 0.35;
+      }
+
+      .token-id-chip {
+        font-family: var(--mono);
+        font-size: 15px;
+        padding: 6px 14px;
+        background: var(--bg-warm);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+      }
+
+      .token-id-tooltip {
+        position: absolute;
+        bottom: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-caption);
+        opacity: 0;
+        white-space: nowrap;
+        transition: opacity 0.15s;
+        pointer-events: none;
+      }
+
+      .token-pill:hover .token-id-tooltip {
+        opacity: 1;
+      }
+
+      /* Flow arrows */
+      .flow-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 16px 0;
+      }
+
+      .flow-arrow-label {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-caption);
+        margin-bottom: 4px;
+      }
+
+      /* Embedding viz */
+      .embedding-canvas {
+        position: relative;
+        background: var(--bg-warm);
+        border: 1px solid var(--border);
+        height: 420px;
+        overflow: hidden;
+      }
+
+      .word-bubble {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        transition: transform 0.2s;
+        z-index: 10;
+      }
+
+      .word-bubble:hover {
+        z-index: 30;
+      }
+
+      .word-label {
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 500;
+        padding: 4px 10px;
+        white-space: nowrap;
+        border-width: 1.5px;
+        border-style: solid;
+        transition: transform 0.15s, box-shadow 0.15s;
+      }
+
+      .word-label:hover {
+        transform: scale(1.12);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      .word-label.sentence-word {
+        font-weight: 600;
+        background: var(--text-primary);
+        color: #fff;
+        border-color: var(--text-primary);
+      }
+
+      .rank-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--sans);
+        font-size: 10px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--text-primary);
+      }
+
+      /* Legend */
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .legend-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+      }
+
+      .legend-swatch.circle {
+        border-radius: 50%;
+      }
+
+      /* Pipeline */
+      .pipeline {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
+      .pipeline-step {
+        text-align: center;
+        padding: 10px 16px;
+        background: var(--bg-warm);
+        border: 1px solid var(--border);
+      }
+
+      .pipeline-step .step-value {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+
+      .pipeline-step .step-label {
+        font-family: var(--sans);
+        font-size: 11px;
+        color: var(--text-caption);
+        margin-top: 2px;
+      }
+
+      .pipeline-arrow {
+        color: var(--rule);
+        flex-shrink: 0;
+      }
+
+      /* Sidebar info panels */
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 600px) {
+        .info-grid { grid-template-columns: 1fr; }
+        .headline { font-size: 28px; }
+        .deck { font-size: 17px; }
+        .pipeline { gap: 8px; }
+      }
+
+      .info-panel {
+        border-top: 2px solid var(--border);
+        padding-top: 16px;
+      }
+
+      .info-panel-title {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+      }
+
+      .info-panel .body-text {
+        font-size: 14px;
+      }
+
+      /* Controls */
+      .control-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+
+      /* CTA */
+      .cta-btn {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 15px;
+        background: var(--text-primary);
+        color: #fff;
+        border: none;
+        padding: 12px 28px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .cta-btn:hover {
+        background: #333;
+      }
+
+      /* Hover info panel */
+      .hover-panel {
+        border-left: 3px solid var(--text-primary);
+        background: var(--bg-warm);
+        padding: 20px 24px;
+        margin-bottom: 24px;
+      }
+
+      .hover-panel .word-title {
+        font-family: var(--serif);
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .neighbor-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 6px 12px;
+        font-family: var(--sans);
+        font-size: 13px;
+      }
+
+      .neighbor-rank {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--text-primary);
+        color: #fff;
+      }
+
+      .neighbor-distance {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-caption);
+      }
+
+      /* Back link */
+      .back-link {
+        font-family: var(--sans);
+        font-size: 14px;
+        color: var(--accent-blue);
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .back-link:hover {
+        text-decoration: underline;
+      }
+
+      /* Source line */
+      .source-line {
+        font-family: var(--sans);
+        font-size: 12px;
+        color: var(--text-caption);
+        margin-top: 40px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      /* Change example nav */
+      .example-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .showing-text {
+        font-family: var(--sans);
+        font-size: 14px;
+        color: var(--text-tertiary);
+      }
+
+      .showing-sentence {
+        font-family: var(--mono);
+        font-size: 16px;
+        color: var(--text-primary);
+      }
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -28,7 +601,8 @@ const TokenizationAndEmbeddingViz = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Combined tokenization + embedding data for each example
+  const clusterPalette = ['#326fa8', '#c43b2e', '#6b4c9a', '#b38600', '#1a8a7d', '#888888'];
+
   const examples = [
     {
       id: 0,
@@ -36,7 +610,6 @@ const TokenizationAndEmbeddingViz = () => {
       tokens: ["The", " capital", " of", " France", " is", " Paris"],
       ids: [464, 3139, 286, 4881, 318, 6342],
       note: "Common words often get their own token",
-      // Words from the sentence (highlighted) + related words in embedding space
       embeddingData: {
         sentenceWords: [
           { word: "capital", x: 350, y: 150, isFromSentence: true },
@@ -47,31 +620,27 @@ const TokenizationAndEmbeddingViz = () => {
           { word: "is", x: 200, y: 280, isFromSentence: true },
         ],
         relatedWords: [
-          // Near "capital" - other governance terms
           { word: "city", x: 320, y: 180, cluster: "places" },
           { word: "government", x: 380, y: 190, cluster: "governance" },
           { word: "nation", x: 410, y: 170, cluster: "governance" },
-          // Near "France" - other countries
           { word: "Germany", x: 480, y: 100, cluster: "countries" },
           { word: "Italy", x: 450, y: 150, cluster: "countries" },
           { word: "Spain", x: 390, y: 160, cluster: "countries" },
           { word: "Europe", x: 440, y: 80, cluster: "countries" },
-          // Near "Paris" - other capitals
           { word: "Berlin", x: 430, y: 60, cluster: "capitals" },
           { word: "Rome", x: 400, y: 130, cluster: "capitals" },
           { word: "London", x: 340, y: 70, cluster: "capitals" },
           { word: "Madrid", x: 350, y: 110, cluster: "capitals" },
-          // Function words cluster
           { word: "a", x: 160, y: 340, cluster: "function" },
           { word: "an", x: 140, y: 360, cluster: "function" },
           { word: "in", x: 220, y: 300, cluster: "function" },
         ],
         clusters: {
-          places: { color: "#f472b6", label: "Places" },
-          countries: { color: "#fb923c", label: "Countries" },
-          capitals: { color: "#c084fc", label: "Capital Cities" },
-          governance: { color: "#facc15", label: "Governance" },
-          function: { color: "#94a3b8", label: "Function Words" },
+          places: { color: "#326fa8", label: "Places" },
+          countries: { color: "#c43b2e", label: "Countries" },
+          capitals: { color: "#6b4c9a", label: "Capital Cities" },
+          governance: { color: "#b38600", label: "Governance" },
+          function: { color: "#888888", label: "Function Words" },
         },
         insight: "Notice how 'Paris', 'France', and 'capital' cluster together — they often appear in similar contexts. Meanwhile, function words like 'the', 'of', 'is' form their own distant cluster."
       }
@@ -91,33 +660,29 @@ const TokenizationAndEmbeddingViz = () => {
           { word: "ating", x: 220, y: 270, isFromSentence: true },
         ],
         relatedWords: [
-          // Near tokenization - NLP terms
           { word: "embedding", x: 250, y: 100, cluster: "nlp" },
           { word: "parsing", x: 310, y: 90, cluster: "nlp" },
           { word: "encoding", x: 340, y: 160, cluster: "nlp" },
           { word: "vocabulary", x: 270, y: 170, cluster: "nlp" },
           { word: "subword", x: 360, y: 120, cluster: "nlp" },
-          // Common suffixes cluster
           { word: "ization", x: 320, y: 140, cluster: "suffixes" },
           { word: "tion", x: 350, y: 180, cluster: "suffixes" },
           { word: "ing", x: 240, y: 290, cluster: "suffixes" },
           { word: "ment", x: 380, y: 200, cluster: "suffixes" },
-          // Near fascinating - positive adjectives
           { word: "interesting", x: 150, y: 230, cluster: "adjectives" },
           { word: "amazing", x: 140, y: 280, cluster: "adjectives" },
           { word: "exciting", x: 200, y: 220, cluster: "adjectives" },
           { word: "wonderful", x: 120, y: 260, cluster: "adjectives" },
-          // Function words
           { word: "are", x: 420, y: 320, cluster: "function" },
           { word: "was", x: 380, y: 280, cluster: "function" },
         ],
         clusters: {
-          nlp: { color: "#38bdf8", label: "NLP Concepts" },
-          suffixes: { color: "#a78bfa", label: "Common Suffixes" },
-          adjectives: { color: "#4ade80", label: "Positive Adjectives" },
-          function: { color: "#94a3b8", label: "Function Words" },
+          nlp: { color: "#326fa8", label: "NLP Concepts" },
+          suffixes: { color: "#6b4c9a", label: "Common Suffixes" },
+          adjectives: { color: "#1a8a7d", label: "Positive Adjectives" },
+          function: { color: "#888888", label: "Function Words" },
         },
-        insight: "Subword pieces like 'ization' and 'ating' have their own positions! The model learns that '-ization' often follows technical terms and '-ating/-ing' follows action roots."
+        insight: "Subword pieces like 'ization' and 'ating' have their own positions. The model learns that '-ization' often follows technical terms and '-ating/-ing' follows action roots."
       }
     },
     {
@@ -136,34 +701,30 @@ const TokenizationAndEmbeddingViz = () => {
           { word: "ers", x: 380, y: 170, isFromSentence: true },
         ],
         relatedWords: [
-          // AI/ML terms near transform
           { word: "attention", x: 320, y: 120, cluster: "ml" },
           { word: "neural", x: 380, y: 130, cluster: "ml" },
           { word: "network", x: 410, y: 150, cluster: "ml" },
           { word: "model", x: 340, y: 180, cluster: "ml" },
           { word: "encoder", x: 300, y: 160, cluster: "ml" },
           { word: "decoder", x: 330, y: 200, cluster: "ml" },
-          // Chat-related terms
           { word: "conversation", x: 170, y: 160, cluster: "chat" },
           { word: "message", x: 150, y: 120, cluster: "chat" },
           { word: "bot", x: 230, y: 150, cluster: "chat" },
           { word: "assistant", x: 180, y: 100, cluster: "chat" },
-          // Other AI products (single letters/abbreviations cluster)
           { word: "AI", x: 260, y: 80, cluster: "abbrev" },
           { word: "ML", x: 280, y: 60, cluster: "abbrev" },
           { word: "NLP", x: 300, y: 90, cluster: "abbrev" },
-          // Verb cluster
           { word: "utilizes", x: 420, y: 230, cluster: "verbs" },
           { word: "employs", x: 380, y: 270, cluster: "verbs" },
           { word: "requires", x: 440, y: 260, cluster: "verbs" },
         ],
         clusters: {
-          ml: { color: "#f472b6", label: "ML Architecture" },
-          chat: { color: "#38bdf8", label: "Conversation" },
-          abbrev: { color: "#facc15", label: "Tech Abbreviations" },
-          verbs: { color: "#4ade80", label: "Action Verbs" },
+          ml: { color: "#c43b2e", label: "ML Architecture" },
+          chat: { color: "#326fa8", label: "Conversation" },
+          abbrev: { color: "#b38600", label: "Tech Abbreviations" },
+          verbs: { color: "#1a8a7d", label: "Action Verbs" },
         },
-        insight: "Brand names like 'ChatGPT' get split into common pieces. 'Chat' lands near conversation terms, while 'transform' lands near ML architecture concepts — the model captures both meanings!"
+        insight: "Brand names like 'ChatGPT' get split into common pieces. 'Chat' lands near conversation terms, while 'transform' lands near ML architecture concepts — the model captures both meanings."
       }
     },
     {
@@ -184,37 +745,32 @@ const TokenizationAndEmbeddingViz = () => {
           { word: "ve", x: 320, y: 220, isFromSentence: true },
         ],
         relatedWords: [
-          // Near love - emotions
           { word: "adore", x: 180, y: 130, cluster: "emotions" },
           { word: "like", x: 230, y: 170, cluster: "emotions" },
           { word: "enjoy", x: 220, y: 120, cluster: "emotions" },
           { word: "hate", x: 250, y: 190, cluster: "emotions" },
           { word: "passion", x: 160, y: 170, cluster: "emotions" },
-          // Near café - food/drink
           { word: "coffee", x: 380, y: 150, cluster: "food" },
           { word: "restaurant", x: 420, y: 160, cluster: "food" },
           { word: "bistro", x: 450, y: 130, cluster: "food" },
           { word: "espresso", x: 360, y: 100, cluster: "food" },
-          // French loanwords
           { word: "résumé", x: 470, y: 80, cluster: "french" },
           { word: "fiancé", x: 430, y: 70, cluster: "french" },
           { word: "cliché", x: 480, y: 110, cluster: "french" },
-          // Near naïve - personality
           { word: "innocent", x: 280, y: 230, cluster: "personality" },
           { word: "simple", x: 350, y: 240, cluster: "personality" },
           { word: "trusting", x: 290, y: 260, cluster: "personality" },
-          // Function words
           { word: "or", x: 190, y: 340, cluster: "function" },
           { word: "but", x: 150, y: 300, cluster: "function" },
         ],
         clusters: {
-          emotions: { color: "#f472b6", label: "Emotions" },
-          food: { color: "#fb923c", label: "Food & Drink" },
-          french: { color: "#c084fc", label: "French Loanwords" },
-          personality: { color: "#4ade80", label: "Personality Traits" },
-          function: { color: "#94a3b8", label: "Function Words" },
+          emotions: { color: "#c43b2e", label: "Emotions" },
+          food: { color: "#b38600", label: "Food & Drink" },
+          french: { color: "#6b4c9a", label: "French Loanwords" },
+          personality: { color: "#1a8a7d", label: "Personality Traits" },
+          function: { color: "#888888", label: "Function Words" },
         },
-        insight: "Special characters like 'é' and 'ï' become separate tokens. 'caf' + 'é' together reconstruct 'café', which clusters near coffee/restaurant terms. French loanwords with accents cluster together!"
+        insight: "Special characters like 'é' and 'ï' become separate tokens. 'caf' + 'é' together reconstruct 'café', which clusters near coffee and restaurant terms. French loanwords with accents cluster together."
       }
     },
     {
@@ -230,63 +786,56 @@ const TokenizationAndEmbeddingViz = () => {
           { word: "!!!", x: 200, y: 250, isFromSentence: true },
         ],
         relatedWords: [
-          // Money symbols cluster
           { word: "$", x: 220, y: 100, cluster: "money" },
           { word: "€", x: 280, y: 90, cluster: "money" },
           { word: "£", x: 240, y: 140, cluster: "money" },
           { word: "$$", x: 260, y: 130, cluster: "money" },
-          // Price/cost words
           { word: "costly", x: 380, y: 130, cluster: "cost" },
           { word: "pricey", x: 320, y: 170, cluster: "cost" },
           { word: "cheap", x: 400, y: 190, cluster: "cost" },
           { word: "affordable", x: 420, y: 160, cluster: "cost" },
           { word: "luxury", x: 300, y: 120, cluster: "cost" },
           { word: "premium", x: 340, y: 100, cluster: "cost" },
-          // Emphasis/punctuation cluster
           { word: "!", x: 180, y: 230, cluster: "emphasis" },
           { word: "!!", x: 190, y: 270, cluster: "emphasis" },
           { word: "?", x: 220, y: 290, cluster: "emphasis" },
           { word: "...", x: 160, y: 260, cluster: "emphasis" },
-          // Intensity words
           { word: "very", x: 280, y: 220, cluster: "intensity" },
           { word: "extremely", x: 300, y: 250, cluster: "intensity" },
           { word: "incredibly", x: 260, y: 280, cluster: "intensity" },
           { word: "super", x: 240, y: 240, cluster: "intensity" },
         ],
         clusters: {
-          money: { color: "#4ade80", label: "Currency Symbols" },
-          cost: { color: "#facc15", label: "Price/Cost Words" },
-          emphasis: { color: "#f472b6", label: "Punctuation" },
-          intensity: { color: "#fb923c", label: "Intensity Words" },
+          money: { color: "#1a8a7d", label: "Currency Symbols" },
+          cost: { color: "#b38600", label: "Price/Cost Words" },
+          emphasis: { color: "#c43b2e", label: "Punctuation" },
+          intensity: { color: "#6b4c9a", label: "Intensity Words" },
         },
-        insight: "Symbol sequences like '$$$' and '!!!' get their own tokens! '$$$' clusters with money concepts, while '!!!' is near other emphasis markers. The model learns that more $'s = more expensive, more !'s = more emphasis!"
+        insight: "Symbol sequences like '$$$' and '!!!' get their own tokens. '$$$' clusters with money concepts, while '!!!' is near other emphasis markers. The model learns that more $'s = more expensive, more !'s = more emphasis."
       }
     }
   ];
 
   const currentExample = examples[selectedExample];
 
-  // Calculate distances between words
   const calculateDistance = (w1, w2) => {
     return Math.sqrt(Math.pow(w1.x - w2.x, 2) + Math.pow(w1.y - w2.y, 2));
   };
 
-  // Get all words for current example
   const getAllWords = () => {
     const data = currentExample.embeddingData;
     const sentenceWords = data.sentenceWords.map(w => ({
       ...w,
       cluster: 'sentence',
-      color: '#ffffff'
+      color: '#1a1a1a'
     }));
     const relatedWords = data.relatedWords.map(w => ({
       ...w,
-      color: data.clusters[w.cluster]?.color || '#94a3b8'
+      color: data.clusters[w.cluster]?.color || '#888888'
     }));
     return [...sentenceWords, ...relatedWords];
   };
 
-  // Get connections for hovered word
   const getConnections = () => {
     if (!hoveredWord) return [];
     const allWords = getAllWords();
@@ -305,122 +854,97 @@ const TokenizationAndEmbeddingViz = () => {
 
   const renderTokenization = () => {
     return (
-      <div className="space-y-6">
+      <div>
         {/* Example selector */}
-        <div className="bg-slate-800 rounded-xl p-6">
-          <div className="text-slate-400 text-sm mb-3">Select an example to see how it gets tokenized:</div>
-          <div className="flex flex-wrap gap-2">
+        <div style={{ marginBottom: 24 }}>
+          <div className="caption" style={{ marginBottom: 8 }}>Select an example to see how it gets tokenized:</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {examples.map((ex, i) => (
               <button
                 key={i}
                 onClick={() => setSelectedExample(i)}
-                className={`px-3 py-2 rounded-lg text-sm font-mono transition-all ${
-                  selectedExample === i
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
+                className={`example-btn ${selectedExample === i ? 'active' : ''}`}
               >
-                "{ex.text.substring(0, 20)}{ex.text.length > 20 ? '...' : ''}"
+                "{ex.text.length > 22 ? ex.text.substring(0, 22) + '...' : ex.text}"
               </button>
             ))}
           </div>
         </div>
 
-        {/* Tokenization visualization */}
-        <div className="bg-slate-800 rounded-xl p-6">
-          <div className="text-center mb-6">
-            <div className="text-slate-400 text-sm mb-2">Original Text</div>
-            <div className="text-2xl text-white font-mono bg-slate-900 rounded-lg px-4 py-3 inline-block">
-              "{currentExample.text}"
-            </div>
+        {/* Tokenization flow */}
+        <div className="card" style={{ textAlign: 'center' }}>
+          {/* Original text */}
+          <div className="section-label" style={{ marginBottom: 6 }}>Original Text</div>
+          <div className="mono" style={{ fontSize: 20, background: 'var(--bg-warm)', padding: '12px 20px', display: 'inline-block', border: '1px solid var(--border)' }}>
+            "{currentExample.text}"
           </div>
 
           {/* Arrow */}
-          <div className="flex justify-center my-4">
-            <div className="flex flex-col items-center">
-              <div className="text-slate-500 text-xs mb-1">TOKENIZER</div>
-              <svg width="40" height="40" className="text-blue-400">
-                <path d="M20 5 L20 30 M12 22 L20 30 L28 22" stroke="currentColor" strokeWidth="2" fill="none"/>
-              </svg>
-            </div>
+          <div className="flow-arrow">
+            <div className="flow-arrow-label" style={{ marginTop: 16 }}>Tokenizer</div>
+            <svg width="24" height="28">
+              <path d="M12 2 L12 22 M6 16 L12 22 L18 16" stroke="#999" strokeWidth="1.5" fill="none"/>
+            </svg>
           </div>
 
           {/* Tokens */}
-          <div className="text-center mb-4">
-            <div className="text-slate-400 text-sm mb-3">Tokens (pieces the model sees)</div>
-            <div className="flex flex-wrap justify-center gap-1">
-              {currentExample.tokens.map((token, i) => (
-                <div key={i} className="group relative">
-                  <div 
-                    className="bg-gradient-to-b from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-mono text-lg shadow-lg transform transition-all hover:scale-110 hover:-translate-y-1"
-                  >
-                    <span className="opacity-50">"</span>
-                    {token.replace(/ /g, '␣')}
-                    <span className="opacity-50">"</span>
-                  </div>
-                  <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    ID: {currentExample.ids[i]}
-                  </div>
+          <div className="section-label" style={{ marginBottom: 10 }}>Tokens</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
+            {currentExample.tokens.map((token, i) => (
+              <div key={i} style={{ position: 'relative' }}>
+                <div className="token-pill">
+                  <span className="token-quote">"</span>
+                  {token.replace(/ /g, '\u2423')}
+                  <span className="token-quote">"</span>
+                  <div className="token-id-tooltip">ID: {currentExample.ids[i]}</div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
 
           {/* Arrow */}
-          <div className="flex justify-center my-6">
-            <svg width="40" height="40" className="text-emerald-400">
-              <path d="M20 5 L20 30 M12 22 L20 30 L28 22" stroke="currentColor" strokeWidth="2" fill="none"/>
+          <div className="flow-arrow">
+            <svg width="24" height="28">
+              <path d="M12 2 L12 22 M6 16 L12 22 L18 16" stroke="#999" strokeWidth="1.5" fill="none"/>
             </svg>
           </div>
 
           {/* Token IDs */}
-          <div className="text-center">
-            <div className="text-slate-400 text-sm mb-3">Token IDs (numbers in the model)</div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {currentExample.ids.map((id, i) => (
-                <div
-                  key={i}
-                  className="bg-slate-700 text-emerald-400 px-3 py-2 rounded font-mono text-lg border border-emerald-500/30"
-                >
-                  {id}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Note */}
-          <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-            <div className="text-amber-400 text-sm">
-              💡 {currentExample.note}
-            </div>
+          <div className="section-label" style={{ marginBottom: 10 }}>Token IDs</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
+            {currentExample.ids.map((id, i) => (
+              <div key={i} className="token-id-chip">{id}</div>
+            ))}
           </div>
         </div>
 
-        {/* CTA to embedding space */}
-        <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-xl p-6 text-center">
-          <div className="text-white font-semibold mb-2">Ready to see where these tokens live in meaning space?</div>
-          <button
-            onClick={() => setActiveTab('embedding')}
-            className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold transition-all"
-          >
-            View in Embedding Space →
+        {/* Note */}
+        <div className="annotation-box">
+          <div className="body-text">{currentExample.note}</div>
+        </div>
+
+        {/* CTA */}
+        <div style={{ textAlign: 'center', padding: '28px 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: 32 }}>
+          <div style={{ fontFamily: 'var(--serif)', fontSize: 17, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Where do these tokens live in meaning space?
+          </div>
+          <button className="cta-btn" onClick={() => setActiveTab('embedding')}>
+            View in Embedding Space &rarr;
           </button>
         </div>
 
         {/* Key insights */}
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-slate-800 rounded-xl p-5">
-            <div className="text-blue-400 font-semibold mb-2">📝 Why Subword Tokenization?</div>
-            <div className="text-slate-300 text-sm space-y-2">
-              <p>Models can't store every possible word. Instead, they learn ~50,000 common pieces.</p>
-              <p>Rare words get split into known pieces the model understands.</p>
+        <div className="info-grid">
+          <div className="info-panel">
+            <div className="info-panel-title">Why Subword Tokenization?</div>
+            <div className="body-text">
+              <p>Models can't store every possible word. Instead, they learn ~50,000 common pieces. Rare words get split into known pieces the model understands.</p>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-5">
-            <div className="text-purple-400 font-semibold mb-2">🔢 The Vocabulary</div>
-            <div className="text-slate-300 text-sm space-y-2">
-              <p>Each token maps to a unique ID (like a dictionary page number).</p>
-              <p>GPT-4 has ~100,000 tokens in its vocabulary.</p>
+          <div className="info-panel">
+            <div className="info-panel-title">The Vocabulary</div>
+            <div className="body-text">
+              <p>Each token maps to a unique ID, like a dictionary page number. GPT-4 has ~100,000 tokens in its vocabulary.</p>
             </div>
           </div>
         </div>
@@ -435,258 +959,223 @@ const TokenizationAndEmbeddingViz = () => {
     const data = currentExample.embeddingData;
 
     return (
-      <div className="space-y-6">
-        {/* Current example indicator */}
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <div className="text-slate-400 text-sm">Showing embedding space for:</div>
-              <div className="text-white font-mono text-lg">"{currentExample.text}"</div>
-            </div>
-            <button
-              onClick={() => setActiveTab('tokenization')}
-              className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
-            >
-              ← Change example
-            </button>
+      <div>
+        {/* Current example nav */}
+        <div className="example-nav" style={{ marginBottom: 20 }}>
+          <div>
+            <div className="showing-text">Showing embedding space for:</div>
+            <div className="showing-sentence">"{currentExample.text}"</div>
           </div>
+          <button className="back-link" onClick={() => setActiveTab('tokenization')}>
+            &larr; Change example
+          </button>
         </div>
 
         {/* Legend */}
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-slate-400 text-sm mb-3">Word clusters in this space:</div>
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
-              <div className="w-4 h-4 rounded-full bg-white border-2 border-white shadow-lg shadow-white/30"></div>
-              <span className="text-white text-sm font-medium">Words from your sentence</span>
-            </div>
-            {Object.entries(data.clusters).map(([id, cluster]) => (
-              <div key={id} className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1.5">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cluster.color }}></div>
-                <span className="text-slate-300 text-sm">{cluster.label}</span>
-              </div>
-            ))}
+        <div className="legend">
+          <div className="legend-item">
+            <div className="legend-swatch circle" style={{ background: 'var(--text-primary)', border: '1.5px solid var(--text-primary)' }}></div>
+            <span style={{ fontWeight: 500 }}>Words from sentence</span>
           </div>
+          {Object.entries(data.clusters).map(([id, cluster]) => (
+            <div key={id} className="legend-item">
+              <div className="legend-swatch" style={{ backgroundColor: cluster.color }}></div>
+              <span>{cluster.label}</span>
+            </div>
+          ))}
         </div>
 
         {/* Main embedding visualization */}
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="relative bg-slate-900 rounded-xl h-96 overflow-hidden">
-            {/* Background grid */}
-            <svg className="absolute inset-0 w-full h-full opacity-10">
-              {[...Array(20)].map((_, i) => (
-                <g key={i}>
-                  <line x1={i * 40} y1="0" x2={i * 40} y2="100%" stroke="#475569" strokeWidth="1"/>
-                  <line x1="0" y1={i * 25} x2="100%" y2={i * 25} stroke="#475569" strokeWidth="1"/>
-                </g>
-              ))}
-            </svg>
+        <div className="embedding-canvas">
+          {/* Background grid */}
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.08 }}>
+            {[...Array(20)].map((_, i) => (
+              <g key={i}>
+                <line x1={i * 40} y1="0" x2={i * 40} y2="100%" stroke="#888" strokeWidth="0.5"/>
+                <line x1="0" y1={i * 25} x2="100%" y2={i * 25} stroke="#888" strokeWidth="0.5"/>
+              </g>
+            ))}
+          </svg>
 
-            {/* Cluster background blobs */}
-            {Object.entries(data.clusters).map(([id, cluster]) => {
-              const clusterWords = data.relatedWords.filter(w => w.cluster === id);
-              if (clusterWords.length === 0) return null;
-              const centerX = clusterWords.reduce((sum, w) => sum + w.x, 0) / clusterWords.length;
-              const centerY = clusterWords.reduce((sum, w) => sum + w.y, 0) / clusterWords.length;
-              return (
-                <div
-                  key={id}
-                  className="absolute rounded-full blur-3xl opacity-15 transition-all duration-500"
-                  style={{
-                    left: centerX - 80,
-                    top: centerY - 80,
-                    width: 160,
-                    height: 160,
-                    backgroundColor: cluster.color
-                  }}
-                />
-              );
-            })}
-
-            {/* Connection lines for hovered word */}
-            {showConnections && sourceWord && (
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
-                {connections.map((conn, i) => {
-                  const opacity = 1 - (i * 0.15);
-                  const pulse = Math.sin(animationFrame * 0.1 + i) * 0.1 + 0.9;
-                  return (
-                    <g key={conn.target.word}>
-                      <line
-                        x1={sourceWord.x}
-                        y1={sourceWord.y}
-                        x2={conn.target.x}
-                        y2={conn.target.y}
-                        stroke={sourceWord.isFromSentence ? '#ffffff' : sourceWord.color}
-                        strokeWidth={3 - i * 0.4}
-                        strokeOpacity={opacity * pulse}
-                        strokeDasharray={i > 2 ? "5,5" : "none"}
-                      />
-                      <text
-                        x={(sourceWord.x + conn.target.x) / 2}
-                        y={(sourceWord.y + conn.target.y) / 2 - 8}
-                        fill="#94a3b8"
-                        fontSize="10"
-                        textAnchor="middle"
-                      >
-                        {conn.distance.toFixed(0)}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-            )}
-
-            {/* Words as points */}
-            {allWords.map((wordData, i) => {
-              const isHovered = hoveredWord === wordData.word;
-              const isConnected = connections.some(c => c.target.word === wordData.word);
-              const connectionRank = connections.findIndex(c => c.target.word === wordData.word);
-              const isFromSentence = wordData.isFromSentence;
-
-              return (
-                <div
-                  key={`${wordData.word}-${i}`}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 cursor-pointer"
-                  style={{
-                    left: wordData.x,
-                    top: wordData.y,
-                    zIndex: isHovered ? 30 : isFromSentence ? 25 : isConnected ? 20 : 10
-                  }}
-                  onMouseEnter={() => setHoveredWord(wordData.word)}
-                  onMouseLeave={() => setHoveredWord(null)}
-                >
-                  {/* Glow effect */}
-                  {(isHovered || isConnected || isFromSentence) && (
-                    <div 
-                      className="absolute inset-0 rounded-full blur-md -z-10"
-                      style={{ 
-                        backgroundColor: isFromSentence ? '#ffffff' : wordData.color,
-                        opacity: isHovered ? 0.7 : isFromSentence ? 0.4 : 0.3,
-                        transform: `scale(${isHovered ? 2.5 : isFromSentence ? 2 : 1.5})`
-                      }}
-                    />
-                  )}
-
-                  {/* Word bubble */}
-                  <div
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                      isHovered ? 'scale-125 shadow-xl' : isConnected ? 'scale-110' : ''
-                    }`}
-                    style={{
-                      backgroundColor: isHovered 
-                        ? (isFromSentence ? '#ffffff' : wordData.color)
-                        : isFromSentence 
-                          ? 'rgba(255,255,255,0.9)' 
-                          : `${wordData.color}30`,
-                      color: isHovered || isFromSentence ? '#1e293b' : wordData.color,
-                      border: `2px solid ${isFromSentence ? '#ffffff' : wordData.color}`,
-                      fontWeight: isFromSentence ? 'bold' : 'medium',
-                    }}
-                  >
-                    {wordData.word}
-                  </div>
-
-                  {/* Similarity rank badge */}
-                  {isConnected && connectionRank >= 0 && (
-                    <div 
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{ 
-                        backgroundColor: sourceWord?.isFromSentence ? '#ffffff' : sourceWord?.color, 
-                        color: '#1e293b' 
-                      }}
-                    >
-                      {connectionRank + 1}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Dimension reminder */}
-            <div className="absolute bottom-3 right-3 text-xs text-slate-500 bg-slate-800/80 px-2 py-1 rounded">
-              Showing 2D projection of 512+ dimensions
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
-            <label className="flex items-center gap-2 text-sm text-slate-400">
-              <input
-                type="checkbox"
-                checked={showConnections}
-                onChange={(e) => setShowConnections(e.target.checked)}
-                className="rounded"
+          {/* Cluster background regions — subtle ellipses */}
+          {Object.entries(data.clusters).map(([id, cluster]) => {
+            const clusterWords = data.relatedWords.filter(w => w.cluster === id);
+            if (clusterWords.length === 0) return null;
+            const centerX = clusterWords.reduce((sum, w) => sum + w.x, 0) / clusterWords.length;
+            const centerY = clusterWords.reduce((sum, w) => sum + w.y, 0) / clusterWords.length;
+            return (
+              <div
+                key={id}
+                style={{
+                  position: 'absolute',
+                  left: centerX - 80,
+                  top: centerY - 70,
+                  width: 160,
+                  height: 140,
+                  borderRadius: '50%',
+                  backgroundColor: cluster.color,
+                  opacity: 0.06,
+                  filter: 'blur(24px)',
+                  pointerEvents: 'none',
+                }}
               />
-              Show similarity connections on hover
-            </label>
-            <div className="text-slate-500 text-sm">
-              Hover over any word to see its nearest neighbors
-            </div>
+            );
+          })}
+
+          {/* Connection lines */}
+          {showConnections && sourceWord && (
+            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}>
+              {connections.map((conn, i) => {
+                const opacity = 0.6 - (i * 0.1);
+                return (
+                  <g key={conn.target.word}>
+                    <line
+                      x1={sourceWord.x}
+                      y1={sourceWord.y}
+                      x2={conn.target.x}
+                      y2={conn.target.y}
+                      stroke={sourceWord.isFromSentence ? '#1a1a1a' : sourceWord.color}
+                      strokeWidth={1.5 - i * 0.15}
+                      strokeOpacity={opacity}
+                      strokeDasharray={i > 2 ? "4,4" : "none"}
+                    />
+                    <text
+                      x={(sourceWord.x + conn.target.x) / 2}
+                      y={(sourceWord.y + conn.target.y) / 2 - 6}
+                      fill="#999"
+                      fontSize="10"
+                      fontFamily="var(--mono)"
+                      textAnchor="middle"
+                    >
+                      {conn.distance.toFixed(0)}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+
+          {/* Words as points */}
+          {allWords.map((wordData, i) => {
+            const isHovered = hoveredWord === wordData.word;
+            const isConnected = connections.some(c => c.target.word === wordData.word);
+            const connectionRank = connections.findIndex(c => c.target.word === wordData.word);
+            const isFromSentence = wordData.isFromSentence;
+
+            return (
+              <div
+                key={`${wordData.word}-${i}`}
+                className="word-bubble"
+                style={{
+                  left: wordData.x,
+                  top: wordData.y,
+                  zIndex: isHovered ? 30 : isFromSentence ? 25 : isConnected ? 20 : 10
+                }}
+                onMouseEnter={() => setHoveredWord(wordData.word)}
+                onMouseLeave={() => setHoveredWord(null)}
+              >
+                <div
+                  className={`word-label ${isFromSentence ? 'sentence-word' : ''}`}
+                  style={!isFromSentence ? {
+                    backgroundColor: isHovered ? wordData.color : `${wordData.color}15`,
+                    color: isHovered ? '#fff' : wordData.color,
+                    borderColor: wordData.color,
+                  } : undefined}
+                >
+                  {wordData.word}
+                </div>
+
+                {isConnected && connectionRank >= 0 && (
+                  <div className="rank-badge" style={{
+                    backgroundColor: sourceWord?.isFromSentence ? '#1a1a1a' : sourceWord?.color,
+                  }}>
+                    {connectionRank + 1}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Dimension note */}
+          <div style={{
+            position: 'absolute', bottom: 8, right: 12,
+            fontFamily: 'var(--sans)', fontSize: 11, color: 'var(--text-caption)',
+            background: 'rgba(250,248,245,0.85)', padding: '3px 8px',
+          }}>
+            2D projection of 512+ dimensions
           </div>
         </div>
 
-        {/* Hovered word info panel */}
+        {/* Controls */}
+        <div className="control-bar">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={showConnections}
+              onChange={(e) => setShowConnections(e.target.checked)}
+            />
+            Show similarity connections on hover
+          </label>
+          <div className="caption">Hover over any word to see its nearest neighbors</div>
+        </div>
+
+        {/* Hover info panel */}
         {hoveredWord && sourceWord && (
-          <div 
-            className="bg-slate-800 rounded-xl p-5 border-l-4 transition-all"
-            style={{ borderColor: sourceWord.isFromSentence ? '#ffffff' : sourceWord.color }}
-          >
-            <div className="flex items-center gap-3 mb-3 flex-wrap">
-              <div 
-                className="text-2xl font-bold"
-                style={{ color: sourceWord.isFromSentence ? '#ffffff' : sourceWord.color }}
-              >
+          <div className="hover-panel" style={{
+            borderLeftColor: sourceWord.isFromSentence ? '#1a1a1a' : sourceWord.color,
+            marginTop: 24,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div className="word-title" style={{ color: sourceWord.isFromSentence ? '#1a1a1a' : sourceWord.color }}>
                 "{hoveredWord}"
               </div>
               {sourceWord.isFromSentence && (
-                <span className="bg-white/20 text-white text-xs px-2 py-1 rounded">From your sentence</span>
+                <span style={{
+                  fontFamily: 'var(--sans)', fontSize: 12, fontWeight: 500,
+                  background: 'var(--bg-annotation)', padding: '3px 8px',
+                  border: '1px solid var(--border)',
+                }}>From your sentence</span>
               )}
             </div>
-            <div className="text-slate-400 text-sm mb-2">5 most similar words (by proximity):</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="caption" style={{ marginBottom: 8 }}>5 most similar words by proximity:</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {connections.map((conn, i) => (
-                <div 
-                  key={conn.target.word}
-                  className="flex items-center gap-2 bg-slate-700/50 rounded-lg px-3 py-1.5"
-                >
-                  <span 
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{ backgroundColor: sourceWord.isFromSentence ? '#ffffff' : sourceWord.color, color: '#1e293b' }}
-                  >
+                <div key={conn.target.word} className="neighbor-chip">
+                  <span className="neighbor-rank" style={{
+                    backgroundColor: sourceWord.isFromSentence ? '#1a1a1a' : sourceWord.color,
+                  }}>
                     {i + 1}
                   </span>
-                  <span style={{ color: conn.target.isFromSentence ? '#ffffff' : conn.target.color }}>
+                  <span style={{ color: conn.target.isFromSentence ? '#1a1a1a' : conn.target.color, fontWeight: 500 }}>
                     {conn.target.word}
                   </span>
-                  <span className="text-xs text-slate-500">({conn.distance.toFixed(0)} units)</span>
+                  <span className="neighbor-distance">{conn.distance.toFixed(0)}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Insight for this example */}
-        <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-5">
-          <div className="text-purple-400 font-semibold mb-2">🔍 What to notice</div>
-          <div className="text-slate-300">
-            {currentExample.embeddingData.insight}
+        {/* Insight */}
+        <div className="insight-box">
+          <div style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', marginBottom: 6 }}>
+            What to notice
           </div>
+          <div className="body-text">{currentExample.embeddingData.insight}</div>
         </div>
 
         {/* Key concepts */}
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-slate-800 rounded-xl p-5">
-            <div className="text-pink-400 font-semibold mb-2">🎯 Proximity = Similarity</div>
-            <div className="text-slate-300 text-sm space-y-2">
-              <p>Words that appear in similar contexts during training end up near each other.</p>
-              <p>The white words from your sentence cluster with semantically related concepts.</p>
+        <div className="info-grid">
+          <div className="info-panel">
+            <div className="info-panel-title">Proximity = Similarity</div>
+            <div className="body-text">
+              <p>Words that appear in similar contexts during training end up near each other. The dark words from your sentence cluster with semantically related concepts.</p>
             </div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-5">
-            <div className="text-cyan-400 font-semibold mb-2">📐 High Dimensions</div>
-            <div className="text-slate-300 text-sm space-y-2">
-              <p>Real embeddings have 512-4096 dimensions, capturing nuanced relationships.</p>
-              <p>This 2D view is a simplified projection — imagine many more axes!</p>
+          <div className="info-panel">
+            <div className="info-panel-title">High Dimensions</div>
+            <div className="body-text">
+              <p>Real embeddings have 512-4,096 dimensions, capturing nuanced relationships. This 2D view is a simplified projection — imagine many more axes.</p>
             </div>
           </div>
         </div>
@@ -695,83 +1184,70 @@ const TokenizationAndEmbeddingViz = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold text-white text-center mb-2">
-          From Words to Meaning Space
-        </h1>
-        <p className="text-slate-400 text-center mb-6">
-          How language models represent words as points in a high-dimensional cloud
-        </p>
+    <div className="container">
+      <div className="rule-heavy" style={{ marginTop: 0 }}></div>
+      <div className="section-label" style={{ marginBottom: 8, color: 'var(--accent-blue)' }}>Interactive</div>
+      <h1 className="headline">From Words to Meaning Space</h1>
+      <p className="deck">
+        How language models break text into tokens, then represent those tokens as points in a high-dimensional cloud of meaning.
+      </p>
 
-        {/* Tab navigation */}
-        <div className="flex justify-center gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab('tokenization')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-              activeTab === 'tokenization'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            1. Tokenization
-            <div className="text-xs opacity-70 mt-1">Breaking text into pieces</div>
-          </button>
-          <button
-            onClick={() => setActiveTab('embedding')}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-              activeTab === 'embedding'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            2. Embedding Space
-            <div className="text-xs opacity-70 mt-1">Words as points in meaning space</div>
-          </button>
+      {/* Tab navigation */}
+      <div className="tab-nav">
+        <button
+          onClick={() => setActiveTab('tokenization')}
+          className={`tab-btn ${activeTab === 'tokenization' ? 'active' : ''}`}
+        >
+          1. Tokenization
+          <span className="tab-step">Breaking text into pieces</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('embedding')}
+          className={`tab-btn ${activeTab === 'embedding' ? 'active' : ''}`}
+        >
+          2. Embedding Space
+          <span className="tab-step">Words as points in meaning space</span>
+        </button>
+      </div>
+
+      {/* Content */}
+      {activeTab === 'tokenization' && renderTokenization()}
+      {activeTab === 'embedding' && renderEmbeddingSpace()}
+
+      {/* Pipeline */}
+      <hr className="rule" />
+      <div style={{ marginBottom: 12 }}>
+        <div className="section-label" style={{ marginBottom: 6 }}>The Complete Pipeline</div>
+      </div>
+      <div className="pipeline">
+        <div className="pipeline-step">
+          <div className="step-value">"{currentExample.text.substring(0, 15)}..."</div>
+          <div className="step-label">Raw text</div>
         </div>
-
-        {/* Content */}
-        {activeTab === 'tokenization' && renderTokenization()}
-        {activeTab === 'embedding' && renderEmbeddingSpace()}
-
-        {/* Process connection */}
-        <div className="mt-8 bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-xl p-6">
-          <h3 className="text-white font-bold text-lg mb-4">🔗 The Complete Pipeline</h3>
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-            <div className="bg-slate-800 rounded-lg px-4 py-3 text-center">
-              <div className="text-blue-400 font-mono text-sm">"{currentExample.text.substring(0, 15)}..."</div>
-              <div className="text-slate-500 text-xs">Raw text</div>
-            </div>
-            <svg width="30" height="20" className="text-slate-500 flex-shrink-0">
-              <path d="M5 10 L25 10 M20 5 L25 10 L20 15" stroke="currentColor" strokeWidth="2" fill="none"/>
-            </svg>
-            <div className="bg-slate-800 rounded-lg px-4 py-3 text-center">
-              <div className="text-emerald-400 font-mono text-sm">{currentExample.tokens.length} tokens</div>
-              <div className="text-slate-500 text-xs">Tokenized</div>
-            </div>
-            <svg width="30" height="20" className="text-slate-500 flex-shrink-0">
-              <path d="M5 10 L25 10 M20 5 L25 10 L20 15" stroke="currentColor" strokeWidth="2" fill="none"/>
-            </svg>
-            <div className="bg-slate-800 rounded-lg px-4 py-3 text-center">
-              <div className="text-amber-400 font-mono text-sm">[{currentExample.ids[0]}, ...]</div>
-              <div className="text-slate-500 text-xs">Token IDs</div>
-            </div>
-            <svg width="30" height="20" className="text-slate-500 flex-shrink-0">
-              <path d="M5 10 L25 10 M20 5 L25 10 L20 15" stroke="currentColor" strokeWidth="2" fill="none"/>
-            </svg>
-            <div className="bg-slate-800 rounded-lg px-4 py-3 text-center">
-              <div className="text-purple-400 font-mono text-sm">{currentExample.tokens.length} × 512</div>
-              <div className="text-slate-500 text-xs">Embedding matrix</div>
-            </div>
-            <svg width="30" height="20" className="text-slate-500 flex-shrink-0">
-              <path d="M5 10 L25 10 M20 5 L25 10 L20 15" stroke="currentColor" strokeWidth="2" fill="none"/>
-            </svg>
-            <div className="bg-slate-800 rounded-lg px-4 py-3 text-center">
-              <div className="text-pink-400">📍 × {currentExample.tokens.length}</div>
-              <div className="text-slate-500 text-xs">Points in space</div>
-            </div>
-          </div>
+        <svg width="24" height="16" className="pipeline-arrow"><path d="M4 8 L20 8 M15 4 L20 8 L15 12" stroke="#ccc" strokeWidth="1.5" fill="none"/></svg>
+        <div className="pipeline-step">
+          <div className="step-value">{currentExample.tokens.length} tokens</div>
+          <div className="step-label">Tokenized</div>
         </div>
+        <svg width="24" height="16" className="pipeline-arrow"><path d="M4 8 L20 8 M15 4 L20 8 L15 12" stroke="#ccc" strokeWidth="1.5" fill="none"/></svg>
+        <div className="pipeline-step">
+          <div className="step-value">[{currentExample.ids[0]}, ...]</div>
+          <div className="step-label">Token IDs</div>
+        </div>
+        <svg width="24" height="16" className="pipeline-arrow"><path d="M4 8 L20 8 M15 4 L20 8 L15 12" stroke="#ccc" strokeWidth="1.5" fill="none"/></svg>
+        <div className="pipeline-step">
+          <div className="step-value">{currentExample.tokens.length} &times; 512</div>
+          <div className="step-label">Embedding matrix</div>
+        </div>
+        <svg width="24" height="16" className="pipeline-arrow"><path d="M4 8 L20 8 M15 4 L20 8 L15 12" stroke="#ccc" strokeWidth="1.5" fill="none"/></svg>
+        <div className="pipeline-step">
+          <div className="step-value">{currentExample.tokens.length} points</div>
+          <div className="step-label">In meaning space</div>
+        </div>
+      </div>
+
+      <div className="source-line">
+        Token IDs shown are illustrative, based on GPT-style BPE tokenization.
       </div>
     </div>
   );
