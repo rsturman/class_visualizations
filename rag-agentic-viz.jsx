@@ -1,4 +1,4 @@
-import { useState } from "react";
+const { useState } = React;
 
 const C = {
   bg: "#FAFAF7", surface: "#FFFFFF", surfaceAlt: "#F5F3EE",
