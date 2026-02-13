@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG &amp; Agentic AI Architecture</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel" src="rag-agentic-viz.jsx" data-type="module"></script>
+    <script type="text/babel">
+        const { useState } = React;
+        // The JSX file uses "export default function App", which Babel will
+        // make available after the script above is processed. However, with
+        // browser-side Babel the module isn't directly importable, so we
+        // re-render from here after a short delay to ensure the script loads.
+    </script>
+    <script type="text/babel">
+        // Babel standalone processes scripts in order, so by this third block
+        // the component file has been evaluated. We just need to mount it.
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
