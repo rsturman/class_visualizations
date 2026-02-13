@@ -13,19 +13,552 @@
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel" src="rag-agentic-viz.jsx" data-type="module"></script>
     <script type="text/babel">
-        const { useState } = React;
-        // The JSX file uses "export default function App", which Babel will
-        // make available after the script above is processed. However, with
-        // browser-side Babel the module isn't directly importable, so we
-        // re-render from here after a short delay to ensure the script loads.
-    </script>
-    <script type="text/babel">
-        // Babel standalone processes scripts in order, so by this third block
-        // the component file has been evaluated. We just need to mount it.
-        const root = ReactDOM.createRoot(document.getElementById("root"));
-        root.render(React.createElement(App));
+const { useState } = React;
+
+const C = {
+  bg: "#FAFAF7", surface: "#FFFFFF", surfaceAlt: "#F5F3EE",
+  border: "#E2DFD6", accent: "#D03027", blue: "#1A6FB5",
+  green: "#1B7A4A", orange: "#C67A2E", purple: "#6B4C9A",
+  teal: "#0E8A7D", pink: "#B5436E",
+  text: "#1A1A1A", textBody: "#333333", textMuted: "#6B6B6B", textLight: "#999999",
+};
+const SERIF = "'Libre Baskerville','Georgia',serif";
+const SANS = "'Source Sans 3','Helvetica Neue',sans-serif";
+const MONO = "'IBM Plex Mono','Menlo',monospace";
+
+const Rule = ({ s }) => <hr style={{ border: "none", borderTop: `1px solid ${C.border}`, margin: "32px 0", ...s }} />;
+const ThickRule = ({ s }) => <hr style={{ border: "none", borderTop: `3px double ${C.text}`, margin: "40px 0", ...s }} />;
+const Tag = ({ children, color }) => <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 2, fontSize: 11, fontFamily: MONO, fontWeight: 500, letterSpacing: "0.04em", color: color || C.textMuted, border: `1px solid ${color || C.border}`, background: color ? `${color}08` : "transparent" }}>{children}</span>;
+const Toggle = ({ open, color }) => <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "50%", border: `1px solid ${color || C.border}`, fontSize: 14, color: color || C.textMuted, transition: "all 0.2s", fontFamily: SANS, transform: open ? "rotate(45deg)" : "none", flexShrink: 0 }}>+</span>;
+
+function RAGDiagram({ onStepClick, active }) {
+  const W = 680, H = 370;
+  const steps = [
+    { x: 60, y: 60, w: 100, h: 52, label: "User\nQuery", color: C.text, sub: "Natural language" },
+    { x: 200, y: 60, w: 100, h: 52, label: "Embed\nQuery", color: C.purple, sub: "\u2192 vector" },
+    { x: 340, y: 60, w: 120, h: 52, label: "Vector\nSearch", color: C.blue, sub: "Find similar docs" },
+    { x: 500, y: 60, w: 120, h: 52, label: "Retrieve\nContext", color: C.green, sub: "Top-K chunks" },
+    { x: 340, y: 190, w: 140, h: 56, label: "Augment\nPrompt", color: C.orange, sub: "Query + Context" },
+    { x: 170, y: 190, w: 130, h: 56, label: "LLM\nGenerate", color: C.accent, sub: "Grounded answer" },
+    { x: 30, y: 190, w: 100, h: 56, label: "Response\nto User", color: C.text, sub: "With citations" },
+  ];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 680, display: "block", margin: "0 auto" }}>
+      <defs>
+        <marker id="aR" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="7" markerHeight="5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill={C.textLight} />
+        </marker>
+        <marker id="aG" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="7" markerHeight="5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill={C.green} />
+        </marker>
+      </defs>
+
+      <text x={30} y={30} fontSize="9" fontFamily={MONO} fill={C.textLight} letterSpacing="0.12em">RETRIEVAL PHASE</text>
+      <line x1={170} y1={30} x2={630} y2={30} stroke={C.border} strokeWidth="0.5" />
+      <text x={30} y={170} fontSize="9" fontFamily={MONO} fill={C.textLight} letterSpacing="0.12em">GENERATION PHASE</text>
+      <line x1={185} y1={170} x2={500} y2={170} stroke={C.border} strokeWidth="0.5" />
+
+      {[[0,1],[1,2],[2,3]].map(([a,b],i) => (
+        <line key={`r${i}`} x1={steps[a].x+steps[a].w} y1={steps[a].y+steps[a].h/2}
+          x2={steps[b].x} y2={steps[b].y+steps[b].h/2}
+          stroke={C.textLight} strokeWidth="1.2" markerEnd="url(#aR)" />
+      ))}
+      <path d={`M${steps[3].x+steps[3].w/2},${steps[3].y+steps[3].h}
+                Q${steps[3].x+steps[3].w/2},${steps[4].y-10} ${steps[4].x+steps[4].w},${steps[4].y+steps[4].h/2}`}
+        fill="none" stroke={C.green} strokeWidth="1.2" markerEnd="url(#aG)" strokeDasharray="4 3" />
+      <text x={steps[3].x+steps[3].w/2+10} y={steps[3].y+steps[3].h+30} fontSize="8" fontFamily={MONO} fill={C.green}>context chunks</text>
+
+      <path d={`M${steps[0].x+steps[0].w/2},${steps[0].y+steps[0].h}
+                Q${steps[0].x+steps[0].w/2},${steps[4].y+steps[4].h/2} ${steps[4].x+steps[4].w},${steps[4].y+steps[4].h/2-10}`}
+        fill="none" stroke={C.textLight} strokeWidth="1" strokeDasharray="3 3" />
+      <text x={steps[0].x+steps[0].w/2+8} y={steps[0].y+steps[0].h+40} fontSize="8" fontFamily={MONO} fill={C.textLight}>original query</text>
+
+      {[[4,5],[5,6]].map(([a,b],i) => (
+        <line key={`g${i}`} x1={steps[a].x} y1={steps[a].y+steps[a].h/2}
+          x2={steps[b].x+steps[b].w} y2={steps[b].y+steps[b].h/2}
+          stroke={C.textLight} strokeWidth="1.2" markerEnd="url(#aR)" />
+      ))}
+
+      <circle r="3" fill={C.accent} opacity="0.7">
+        <animateMotion dur="2.5s" repeatCount="indefinite"
+          path={`M${steps[4].x+steps[4].w/2},${steps[4].y+steps[4].h/2} L${steps[5].x+steps[5].w/2},${steps[5].y+steps[5].h/2} L${steps[6].x+steps[6].w/2},${steps[6].y+steps[6].h/2}`} />
+      </circle>
+
+      <g>
+        <rect x={360} y={128} width={80} height={26} rx="3" fill={`${C.blue}08`} stroke={C.blue} strokeWidth="0.8" strokeDasharray="3 2" />
+        <text x={400} y={144} fontSize="8" fontFamily={MONO} fill={C.blue} textAnchor="middle">Vector DB</text>
+        <line x1={400} y1={112} x2={400} y2={128} stroke={C.blue} strokeWidth="0.8" strokeDasharray="2 2" />
+      </g>
+
+      <g>
+        <rect x={520} y={128} width={110} height={40} rx="3" fill={C.surfaceAlt} stroke={C.border} strokeWidth="0.8" />
+        <text x={575} y={144} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Knowledge Base</text>
+        <text x={575} y={157} fontSize="7" fontFamily={SANS} fill={C.textLight} textAnchor="middle">PDFs, docs, APIs, DBs</text>
+        <line x1={520} y1={148} x2={440} y2={142} stroke={C.border} strokeWidth="0.8" strokeDasharray="2 2" />
+      </g>
+
+      {steps.map((s, i) => {
+        const isA = active === i;
+        return (
+          <g key={i} onClick={() => onStepClick(i)} style={{ cursor: "pointer" }}>
+            <rect x={s.x} y={s.y} width={s.w} height={s.h} rx="4"
+              fill={isA ? `${s.color}14` : C.surface} stroke={s.color} strokeWidth={isA ? 2 : 1.2} />
+            <text x={s.x + s.w/2} y={s.y + (s.h < 55 ? 18 : 20)} fontSize="12" fontFamily={SERIF} fill={s.color} textAnchor="middle">
+              {s.label.split("\n").map((ln, li) => <tspan key={li} x={s.x + s.w/2} dy={li ? 14 : 0}>{ln}</tspan>)}
+            </text>
+            <text x={s.x + s.w/2} y={s.y + s.h - 6} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">{s.sub}</text>
+            {isA && <rect x={s.x} y={s.y} width={s.w} height={s.h} rx="4" fill="none" stroke={s.color} strokeWidth="2" strokeDasharray="5 3">
+              <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1s" repeatCount="indefinite" />
+            </rect>}
+          </g>
+        );
+      })}
+
+      <text x={W/2} y={H - 60} fontSize="9" fontFamily={SANS} fill={C.textMuted} textAnchor="middle" fontStyle="italic">
+        The key insight: the LLM never "learned" this information — it's injected at query time via the prompt.
+      </text>
+      <text x={W/2} y={H - 44} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Click any step to learn more</text>
+
+      <text x={W/2} y={H - 18} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle" letterSpacing="0.1em">OFFLINE INGESTION</text>
+      <g>
+        {["Load Docs", "Chunk Text", "Embed Chunks", "Store Vectors"].map((label, i) => {
+          const bx = 140 + i * 120, by = H - 10;
+          return (
+            <g key={i}>
+              <rect x={bx} y={by} width={90} height={22} rx="11" fill={C.surfaceAlt} stroke={C.border} strokeWidth="0.7" />
+              <text x={bx + 45} y={by + 14} fontSize="8" fontFamily={MONO} fill={C.textMuted} textAnchor="middle">{label}</text>
+              {i < 3 && <line x1={bx + 90} y1={by + 11} x2={bx + 120} y2={by + 11} stroke={C.border} strokeWidth="0.7" markerEnd="url(#aR)" />}
+            </g>
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
+function AgenticDiagram({ onPartClick, active }) {
+  const W = 660, H = 420;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 660, display: "block", margin: "0 auto" }}>
+      <defs>
+        <marker id="aA" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="7" markerHeight="5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill={C.textLight} />
+        </marker>
+        <marker id="aAc" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="7" markerHeight="5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill={C.accent} />
+        </marker>
+      </defs>
+
+      <ellipse cx={330} cy={195} rx="90" ry="55" fill={`${C.accent}06`} stroke={C.accent} strokeWidth="1.5" />
+      <text x={330} y={182} fontSize="14" fontFamily={SERIF} fill={C.accent} textAnchor="middle">Agent</text>
+      <text x={330} y={198} fontSize="10" fontFamily={SANS} fill={C.textMuted} textAnchor="middle">Reasoning Loop</text>
+      <text x={330} y={214} fontSize="9" fontFamily={MONO} fill={C.textLight} textAnchor="middle">{"Think \u2192 Act \u2192 Observe"}</text>
+
+      <ellipse cx={330} cy={195} rx="80" ry="45" fill="none" stroke={C.accent} strokeWidth="0.8" strokeDasharray="6 4" opacity="0.4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="2s" repeatCount="indefinite" />
+      </ellipse>
+
+      <g onClick={() => onPartClick(0)} style={{ cursor: "pointer" }}>
+        <rect x={20} y={172} width={100} height={46} rx="4" fill={active===0?`${C.text}10`:C.surface} stroke={C.text} strokeWidth={active===0?2:1.2} />
+        <text x={70} y={192} fontSize="12" fontFamily={SERIF} fill={C.text} textAnchor="middle">User Task</text>
+        <text x={70} y={206} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Goal or question</text>
+      </g>
+      <line x1={120} y1={195} x2={240} y2={195} stroke={C.textLight} strokeWidth="1.2" markerEnd="url(#aA)" />
+
+      <g onClick={() => onPartClick(6)} style={{ cursor: "pointer" }}>
+        <rect x={540} y={172} width={100} height={46} rx="4" fill={active===6?`${C.green}10`:C.surface} stroke={C.green} strokeWidth={active===6?2:1.2} />
+        <text x={590} y={192} fontSize="12" fontFamily={SERIF} fill={C.green} textAnchor="middle">Final Output</text>
+        <text x={590} y={206} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Result + reasoning</text>
+      </g>
+      <line x1={420} y1={195} x2={540} y2={195} stroke={C.textLight} strokeWidth="1.2" markerEnd="url(#aA)" />
+
+      <g onClick={() => onPartClick(1)} style={{ cursor: "pointer" }}>
+        <rect x={270} y={30} width={120} height={50} rx="4" fill={active===1?`${C.purple}12`:C.surface} stroke={C.purple} strokeWidth={active===1?2:1.2} />
+        <text x={330} y={52} fontSize="12" fontFamily={SERIF} fill={C.purple} textAnchor="middle">Planning</text>
+        <text x={330} y={68} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Break down tasks</text>
+      </g>
+      <line x1={330} y1={80} x2={330} y2={140} stroke={C.purple} strokeWidth="1" strokeDasharray="3 3" markerEnd="url(#aA)" />
+      <text x={342} y={116} fontSize="7" fontFamily={MONO} fill={C.purple}>plan</text>
+
+      <g onClick={() => onPartClick(2)} style={{ cursor: "pointer" }}>
+        <rect x={490} y={60} width={130} height={52} rx="4" fill={active===2?`${C.blue}12`:C.surface} stroke={C.blue} strokeWidth={active===2?2:1.2} />
+        <text x={555} y={82} fontSize="12" fontFamily={SERIF} fill={C.blue} textAnchor="middle">Tools</text>
+        <text x={555} y={98} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">APIs, search, code, DB</text>
+      </g>
+      <line x1={410} y1={165} x2={490} y2={100} stroke={C.blue} strokeWidth="1" strokeDasharray="3 3" markerEnd="url(#aA)" />
+      <text x={462} y={128} fontSize="7" fontFamily={MONO} fill={C.blue}>call</text>
+      <line x1={490} y1={108} x2={416} y2={173} stroke={C.blue} strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+      <text x={462} y={148} fontSize="7" fontFamily={MONO} fill={C.blue} opacity="0.7">result</text>
+
+      {["\uD83D\uDD0D Search", "\uD83D\uDC0D Code", "\uD83D\uDCCA Data", "\uD83C\uDF10 API"].map((t, i) => (
+        <g key={i}>
+          <rect x={495 + (i % 2) * 65} y={118 + Math.floor(i/2) * 24} width={58} height={18} rx="9" fill={C.surfaceAlt} stroke={C.border} strokeWidth="0.6" />
+          <text x={524 + (i % 2) * 65} y={130 + Math.floor(i/2) * 24} fontSize="8" fontFamily={SANS} fill={C.textMuted} textAnchor="middle">{t}</text>
+        </g>
+      ))}
+
+      <g onClick={() => onPartClick(3)} style={{ cursor: "pointer" }}>
+        <rect x={40} y={60} width={130} height={52} rx="4" fill={active===3?`${C.orange}12`:C.surface} stroke={C.orange} strokeWidth={active===3?2:1.2} />
+        <text x={105} y={82} fontSize="12" fontFamily={SERIF} fill={C.orange} textAnchor="middle">Memory</text>
+        <text x={105} y={98} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">{"Short & long-term"}</text>
+      </g>
+      <line x1={170} y1={100} x2={250} y2={165} stroke={C.orange} strokeWidth="1" strokeDasharray="3 3" markerEnd="url(#aA)" />
+      <text x={198} y={128} fontSize="7" fontFamily={MONO} fill={C.orange}>recall</text>
+      <line x1={244} y1={173} x2={164} y2={108} stroke={C.orange} strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+      <text x={198} y={148} fontSize="7" fontFamily={MONO} fill={C.orange} opacity="0.7">store</text>
+
+      <g onClick={() => onPartClick(4)} style={{ cursor: "pointer" }}>
+        <rect x={80} y={290} width={140} height={52} rx="4" fill={active===4?`${C.teal}12`:C.surface} stroke={C.teal} strokeWidth={active===4?2:1.2} />
+        <text x={150} y={312} fontSize="12" fontFamily={SERIF} fill={C.teal} textAnchor="middle">RAG / Retrieval</text>
+        <text x={150} y={328} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Knowledge grounding</text>
+      </g>
+      <line x1={240} y1={240} x2={180} y2={290} stroke={C.teal} strokeWidth="1" strokeDasharray="3 3" markerEnd="url(#aA)" />
+      <text x={198} y={266} fontSize="7" fontFamily={MONO} fill={C.teal}>query docs</text>
+      <line x1={190} y1={290} x2={260} y2={240} stroke={C.teal} strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
+      <text x={236} y={272} fontSize="7" fontFamily={MONO} fill={C.teal} opacity="0.7">context</text>
+
+      <g onClick={() => onPartClick(5)} style={{ cursor: "pointer" }}>
+        <rect x={430} y={290} width={140} height={52} rx="4" fill={active===5?`${C.pink}12`:C.surface} stroke={C.pink} strokeWidth={active===5?2:1.2} />
+        <text x={500} y={312} fontSize="12" fontFamily={SERIF} fill={C.pink} textAnchor="middle">Guardrails</text>
+        <text x={500} y={328} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">{"Safety & evaluation"}</text>
+      </g>
+      <line x1={400} y1={240} x2={460} y2={290} stroke={C.pink} strokeWidth="1" strokeDasharray="3 3" markerEnd="url(#aA)" />
+      <text x={442} y={266} fontSize="7" fontFamily={MONO} fill={C.pink}>check</text>
+
+      <text x={W/2} y={H - 30} fontSize="9" fontFamily={SANS} fill={C.textMuted} textAnchor="middle" fontStyle="italic">
+        {"The agent loops through Think \u2192 Act \u2192 Observe until it has enough information to respond."}
+      </text>
+      <text x={W/2} y={H - 14} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Click any component to learn more</text>
+    </svg>
+  );
+}
+
+function EmbeddingDiagram() {
+  const W = 600, H = 210;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 600, display: "block", margin: "0 auto" }}>
+      <defs>
+        <marker id="aE" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="7" markerHeight="5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill={C.textLight} />
+        </marker>
+      </defs>
+
+      <rect x={10} y={30} width={100} height={130} rx="3" fill={C.surface} stroke={C.border} strokeWidth="1" />
+      {[0,1,2,3,4,5,6].map(i => (
+        <line key={i} x1={20} y1={50+i*15} x2={100} y2={50+i*15} stroke={C.border} strokeWidth="0.8" />
+      ))}
+      <text x={60} y={22} fontSize="9" fontFamily={MONO} fill={C.textLight} textAnchor="middle">DOCUMENT</text>
+
+      <line x1={110} y1={95} x2={140} y2={95} stroke={C.textLight} strokeWidth="1" markerEnd="url(#aE)" />
+
+      <text x={185} y={22} fontSize="9" fontFamily={MONO} fill={C.orange} textAnchor="middle">CHUNK</text>
+      {[0,1,2,3].map(i => (
+        <g key={i}>
+          <rect x={145} y={34+i*36} width={80} height={28} rx="3" fill={`${C.orange}08`} stroke={C.orange} strokeWidth="0.8" />
+          <text x={185} y={52+i*36} fontSize="8" fontFamily={SANS} fill={C.orange} textAnchor="middle">Chunk {i+1}</text>
+        </g>
+      ))}
+
+      <line x1={225} y1={95} x2={260} y2={95} stroke={C.textLight} strokeWidth="1" markerEnd="url(#aE)" />
+
+      <rect x={265} y={68} width={90} height={54} rx="4" fill={`${C.purple}08`} stroke={C.purple} strokeWidth="1.2" />
+      <text x={310} y={90} fontSize="10" fontFamily={SERIF} fill={C.purple} textAnchor="middle">Embedding</text>
+      <text x={310} y={106} fontSize="8" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Model</text>
+
+      <line x1={355} y1={95} x2={390} y2={95} stroke={C.textLight} strokeWidth="1" markerEnd="url(#aE)" />
+
+      <text x={440} y={22} fontSize="9" fontFamily={MONO} fill={C.blue} textAnchor="middle">VECTORS</text>
+      {[0,1,2,3].map(i => (
+        <g key={i}>
+          <rect x={395} y={34+i*36} width={90} height={28} rx="3" fill={`${C.blue}08`} stroke={C.blue} strokeWidth="0.8" />
+          <text x={440} y={52+i*36} fontSize="7" fontFamily={MONO} fill={C.blue} textAnchor="middle">{"[0.12, -0.84, 0.31\u2026]"}</text>
+        </g>
+      ))}
+
+      <line x1={485} y1={95} x2={520} y2={95} stroke={C.textLight} strokeWidth="1" markerEnd="url(#aE)" />
+
+      <rect x={525} y={55} width={65} height={80} rx="4" fill={`${C.green}08`} stroke={C.green} strokeWidth="1.2" />
+      <text x={557} y={82} fontSize="10" fontFamily={SERIF} fill={C.green} textAnchor="middle">Vector</text>
+      <text x={557} y={98} fontSize="10" fontFamily={SERIF} fill={C.green} textAnchor="middle">DB</text>
+      <text x={557} y={124} fontSize="7" fontFamily={MONO} fill={C.textLight} textAnchor="middle">Pinecone</text>
+
+      <text x={W/2} y={H - 12} fontSize="9" fontFamily={SANS} fill={C.textMuted} textAnchor="middle" fontStyle="italic">
+        {"Semantically similar text produces nearby vectors \u2014 enabling search by meaning, not keywords"}
+      </text>
+    </svg>
+  );
+}
+
+function TradeoffsDiagram() {
+  const W = 540, H = 220;
+  const items = [
+    { label: "Accuracy", x: 90, color: C.green },
+    { label: "Latency", x: 230, color: C.blue },
+    { label: "Cost", x: 370, color: C.orange },
+    { label: "Safety", x: 510, color: C.pink },
+  ];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 540, display: "block", margin: "0 auto" }}>
+      {[[0,1],[1,2],[0,2],[2,3],[1,3]].map(([a,b],i) => (
+        <line key={i} x1={items[a].x} y1={90} x2={items[b].x} y2={90}
+          stroke={C.border} strokeWidth="1" strokeDasharray="4 3" />
+      ))}
+      {items.map((it, i) => (
+        <g key={i}>
+          <circle cx={it.x} cy={90} r="28" fill={C.surface} stroke={it.color} strokeWidth="2" />
+          <text x={it.x} y={93} fontSize="10" fontFamily={SANS} fill={it.color} textAnchor="middle" fontWeight="600">{it.label}</text>
+          <text x={it.x} y={135} fontSize="8" fontFamily={SANS} fill={C.textMuted} textAnchor="middle">
+            {["More chunks,\nbigger models", "Fewer steps,\nsmaller models", "Fewer API calls,\ncaching", "More guardrails,\nfiltering"][i].split("\n").map((ln, li) => (
+              <tspan key={li} x={it.x} dy={li ? 12 : 0}>{ln}</tspan>
+            ))}
+          </text>
+        </g>
+      ))}
+      <text x={(items[0].x+items[1].x)/2} y={78} fontSize="7" fontFamily={MONO} fill={C.textLight} textAnchor="middle">{"\u2194 tension \u2194"}</text>
+      <text x={(items[1].x+items[2].x)/2} y={78} fontSize="7" fontFamily={MONO} fill={C.textLight} textAnchor="middle">{"\u2194 tension \u2194"}</text>
+      <text x={(items[2].x+items[3].x)/2} y={78} fontSize="7" fontFamily={MONO} fill={C.textLight} textAnchor="middle">{"\u2194 tension \u2194"}</text>
+
+      <text x={W/2} y={H - 20} fontSize="9" fontFamily={SANS} fill={C.textMuted} textAnchor="middle" fontStyle="italic">
+        Improving any one dimension usually comes at the expense of another
+      </text>
+    </svg>
+  );
+}
+
+function App() {
+  const [activeRAG, setActiveRAG] = useState(null);
+  const [activeAgent, setActiveAgent] = useState(null);
+  const [openDec, setOpenDec] = useState(null);
+
+  const ragSteps = [
+    { name: "User Query", color: C.text, desc: "A natural language question or instruction from the user. The system needs to find relevant information before answering.", example: "\"What is our company's parental leave policy?\" \u2014 the LLM doesn't know this, so it must retrieve it." },
+    { name: "Embed the Query", color: C.purple, desc: "Convert the user's text into a numerical vector (a list of hundreds of numbers) using an embedding model. This vector represents the meaning of the query in a mathematical space.", example: "The sentence becomes something like [0.12, -0.84, 0.31, ...] \u2014 a point in high-dimensional space where similar meanings are nearby." },
+    { name: "Vector Search", color: C.blue, desc: "Compare the query vector against all stored document vectors to find the most semantically similar chunks. This is searching by meaning, not keywords.", example: "A query about 'parental leave' would match chunks about 'maternity policy' or 'family benefits' even if those exact words aren't used." },
+    { name: "Retrieve Context", color: C.green, desc: "Return the top-K most relevant text chunks from the vector database. These become the context the LLM will use to generate its answer.", example: "The system might return 3\u20135 chunks of policy text that score highest in similarity. More chunks = more context but more cost and latency." },
+    { name: "Augment the Prompt", color: C.orange, desc: "Construct the final prompt by combining the original user query with the retrieved context. This is the 'augmentation' in RAG \u2014 injecting knowledge into the prompt.", example: "\"Based on the following company policy documents: [retrieved chunks]... Answer this question: What is our parental leave policy?\"" },
+    { name: "LLM Generation", color: C.accent, desc: "The large language model reads the augmented prompt and generates an answer grounded in the retrieved context, rather than relying on its training data alone.", example: "The LLM synthesizes the policy chunks into a clear, coherent answer. It can cite specific sections and handle nuance." },
+    { name: "Response to User", color: C.text, desc: "The final answer is returned to the user, ideally with citations pointing back to the source documents so the user can verify the information.", example: "\"Our parental leave policy provides 16 weeks paid leave... (Source: Employee Handbook, Section 4.2)\"" },
+  ];
+
+  const agentParts = [
+    { name: "User Task", color: C.text, desc: "A goal or complex question that requires multiple steps to complete. Unlike simple Q&A, agentic tasks often need research, reasoning, and action.", example: "\"Research the top 3 competitors in our market, compare their pricing, and draft a summary for the team.\" This requires search, analysis, and writing \u2014 multiple steps." },
+    { name: "Planning", color: C.purple, desc: "The agent breaks a complex task into smaller, manageable sub-tasks and decides the order to execute them. This can use techniques like chain-of-thought or task decomposition.", techniques: ["Chain-of-thought prompting", "ReAct (Reason + Act)", "Task decomposition", "Self-reflection and replanning"] },
+    { name: "Tool Use", color: C.blue, desc: "The agent can call external tools to take actions in the real world \u2014 searching the web, running code, querying databases, calling APIs, or reading files. This is what makes agents more than chatbots.", techniques: ["Function calling / tool calling", "Code interpreter / sandbox", "Web search and browsing", "API integrations (Slack, email, CRM)"] },
+    { name: "Memory", color: C.orange, desc: "The agent maintains context across its reasoning steps. Short-term memory is the current conversation. Long-term memory persists across sessions using vector stores or databases.", techniques: ["Conversation history (short-term)", "Vector store memory (long-term)", "Scratchpad for intermediate results", "Episodic memory of past tasks"] },
+    { name: "RAG / Retrieval", color: C.teal, desc: "Agents use RAG to ground their reasoning in factual knowledge. When the agent needs information it doesn't have, it retrieves relevant documents and incorporates them into its reasoning.", techniques: ["Same RAG pipeline as Part I", "Dynamic retrieval (agent decides when)", "Multi-source retrieval", "Re-ranking retrieved results"] },
+    { name: "Guardrails & Evaluation", color: C.pink, desc: "Safety checks and quality gates that validate the agent's actions and outputs. Guardrails prevent harmful outputs; evaluation checks if the response actually answers the question well.", techniques: ["Input/output content filtering", "Hallucination detection", "Tool call validation", "Automated evaluation (LLM-as-judge)"] },
+    { name: "Final Output", color: C.green, desc: "The completed result returned to the user, along with the reasoning trace showing how the agent arrived at its answer. Transparency builds trust.", example: "The agent delivers the competitor analysis, shows which sources it used, and explains the reasoning behind its comparisons." },
+  ];
+
+  const activeRAGData = activeRAG !== null ? ragSteps[activeRAG] : null;
+  const activeAgentData = activeAgent !== null ? agentParts[activeAgent] : null;
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: SANS }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        * { box-sizing: border-box; }
+        ::selection { background: ${C.accent}25; }
+      `}</style>
+
+      <header style={{ borderBottom: `1px solid ${C.border}`, background: C.surface, padding: "14px 0", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", padding: "0 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: C.text }}>AI Application Architecture</span>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.textLight, letterSpacing: "0.12em", textTransform: "uppercase" }}>Interactive Guide</span>
+        </div>
+      </header>
+
+      <main style={{ maxWidth: 760, margin: "0 auto", padding: "24px 24px 80px" }}>
+
+        <div style={{ textAlign: "center", padding: "40px 0 0" }}>
+          <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: C.textLight, marginBottom: 14 }}>An Interactive Guide for Students</div>
+          <h1 style={{ fontFamily: SERIF, fontSize: "clamp(26px, 5vw, 42px)", fontWeight: 400, margin: "0 0 16px", color: C.text, lineHeight: 1.18 }}>
+            How RAG and Agentic<br />AI Applications Work
+          </h1>
+          <ThickRule s={{ maxWidth: 80, margin: "0 auto 16px" }} />
+          <p style={{ fontFamily: SANS, fontSize: 16, color: C.textMuted, maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
+            Large language models are powerful, but they can't access your data, use tools, or take actions on their own. RAG and agentic architectures solve this — here's how they work, step by step.
+          </p>
+        </div>
+
+        <ThickRule />
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.textLight, marginBottom: 6 }}>Part I</div>
+        <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 400, margin: "0 0 6px", color: C.text }}>Retrieval-Augmented Generation</h2>
+        <p style={{ fontFamily: SANS, fontSize: 15, color: C.textBody, lineHeight: 1.7, maxWidth: 640, margin: "0 0 4px" }}>
+          RAG solves a fundamental problem: LLMs only know what they were trained on. They can't access your company's documents, today's news, or any private data. RAG fixes this by <em>retrieving</em> relevant information at query time and <em>injecting</em> it into the prompt.
+        </p>
+        <p style={{ fontFamily: SANS, fontSize: 14, color: C.textMuted, margin: "0 0 24px", fontStyle: "italic" }}>Click any step in the pipeline to explore it.</p>
+
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 2, padding: "16px 8px 8px", marginBottom: 8 }}>
+          <RAGDiagram onStepClick={i => setActiveRAG(activeRAG === i ? null : i)} active={activeRAG} />
+        </div>
+
+        {activeRAGData && (
+          <div style={{ animation: "fadeIn 0.25s ease", border: `1px solid ${activeRAGData.color}`, borderLeft: `3px solid ${activeRAGData.color}`, borderRadius: 2, padding: "18px 22px", background: C.surface, marginTop: 16 }}>
+            <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 400, margin: "0 0 6px", color: activeRAGData.color }}>{activeRAGData.name}</h3>
+            <p style={{ fontFamily: SANS, fontSize: 14, color: C.textBody, lineHeight: 1.65, margin: "0 0 12px" }}>{activeRAGData.desc}</p>
+            <div style={{ padding: "10px 14px", borderLeft: `2px solid ${activeRAGData.color}`, background: `${activeRAGData.color}06` }}>
+              <div style={{ fontFamily: MONO, fontSize: 10, color: activeRAGData.color, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600, marginBottom: 3 }}>Example</div>
+              <div style={{ fontFamily: SANS, fontSize: 13, color: C.textBody, lineHeight: 1.6 }}>{activeRAGData.example}</div>
+            </div>
+          </div>
+        )}
+
+        <Rule />
+
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: C.textLight, marginBottom: 4 }}>Under the Hood</div>
+        <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 400, margin: "0 0 6px", color: C.text }}>How Documents Become Searchable</h3>
+        <p style={{ fontFamily: SANS, fontSize: 14, color: C.textBody, lineHeight: 1.7, maxWidth: 640, margin: "0 0 16px" }}>
+          Before RAG can work, your documents must be processed offline. They're split into chunks, converted to vectors, and stored in a vector database. This is the ingestion pipeline.
+        </p>
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 2, padding: "16px 8px 8px", marginBottom: 16 }}>
+          <EmbeddingDiagram />
+        </div>
+
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: C.textLight, marginBottom: 8, marginTop: 24 }}>Key Design Decisions in RAG</div>
+        {[
+          { q: "How big should chunks be?", a: "Too small and you lose context. Too large and you dilute relevance and spend more on tokens. Typical range: 200\u20131000 tokens. Overlapping chunks (e.g., 20% overlap) help preserve context across boundaries." },
+          { q: "How many chunks to retrieve (Top-K)?", a: "More chunks = more context for the LLM, but also more cost, latency, and risk of including irrelevant content. Start with K=3\u20135 and tune based on answer quality." },
+          { q: "Which embedding model?", a: "OpenAI's text-embedding-3-small is a popular default. Open-source alternatives (BGE, E5, Nomic) can be self-hosted for cost and privacy. Dimension size affects storage and search speed." },
+          { q: "When to use a reranker?", a: "Vector search finds roughly relevant chunks. A cross-encoder reranker (like Cohere Rerank) re-scores them for precise relevance. Adds latency but significantly improves quality for complex queries." },
+        ].map((d, j) => {
+          const isOpen = openDec === `rag-${j}`;
+          return (
+            <div key={j} onClick={() => setOpenDec(isOpen ? null : `rag-${j}`)} style={{ padding: "10px 14px", cursor: "pointer", borderBottom: `1px solid ${C.border}`, background: isOpen ? C.surfaceAlt : "transparent", transition: "background 0.15s" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text }}>{d.q}</span>
+                <Toggle open={isOpen} />
+              </div>
+              {isOpen && <p style={{ fontFamily: SANS, fontSize: 14, color: C.textBody, lineHeight: 1.65, margin: "10px 0 0", animation: "fadeIn 0.2s" }}>{d.a}</p>}
+            </div>
+          );
+        })}
+
+        <ThickRule />
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.textLight, marginBottom: 6 }}>Part II</div>
+        <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 400, margin: "0 0 6px", color: C.text }}>Agentic AI Applications</h2>
+        <p style={{ fontFamily: SANS, fontSize: 15, color: C.textBody, lineHeight: 1.7, maxWidth: 640, margin: "0 0 4px" }}>
+          An agent goes beyond Q&A — it can <em>plan</em>, <em>use tools</em>, <em>remember</em>, and <em>take actions</em> in the world. Where RAG is a single retrieve-then-answer pipeline, an agent is a reasoning loop that decides what to do next based on what it observes.
+        </p>
+        <p style={{ fontFamily: SANS, fontSize: 14, color: C.textMuted, margin: "0 0 24px", fontStyle: "italic" }}>Click any component in the diagram to explore it.</p>
+
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 2, padding: "16px 8px 8px", marginBottom: 8 }}>
+          <AgenticDiagram onPartClick={i => setActiveAgent(activeAgent === i ? null : i)} active={activeAgent} />
+        </div>
+
+        {activeAgentData && (
+          <div style={{ animation: "fadeIn 0.25s ease", border: `1px solid ${activeAgentData.color}`, borderLeft: `3px solid ${activeAgentData.color}`, borderRadius: 2, padding: "18px 22px", background: C.surface, marginTop: 16 }}>
+            <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 400, margin: "0 0 6px", color: activeAgentData.color }}>{activeAgentData.name}</h3>
+            <p style={{ fontFamily: SANS, fontSize: 14, color: C.textBody, lineHeight: 1.65, margin: "0 0 12px" }}>{activeAgentData.desc}</p>
+            {activeAgentData.example && (
+              <div style={{ padding: "10px 14px", borderLeft: `2px solid ${activeAgentData.color}`, background: `${activeAgentData.color}06`, marginBottom: activeAgentData.techniques ? 12 : 0 }}>
+                <div style={{ fontFamily: MONO, fontSize: 10, color: activeAgentData.color, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600, marginBottom: 3 }}>Example</div>
+                <div style={{ fontFamily: SANS, fontSize: 13, color: C.textBody, lineHeight: 1.6 }}>{activeAgentData.example}</div>
+              </div>
+            )}
+            {activeAgentData.techniques && (
+              <div>
+                <div style={{ fontFamily: MONO, fontSize: 10, color: C.textLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>Key Techniques</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {activeAgentData.techniques.map(t => <Tag key={t} color={activeAgentData.color}>{t}</Tag>)}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: C.textLight, marginBottom: 8, marginTop: 28 }}>Key Design Decisions for Agents</div>
+        {[
+          { q: "Single agent or multi-agent?", a: "A single agent handles simpler tasks. Multi-agent systems assign specialized roles (researcher, writer, reviewer) that collaborate. Multi-agent is more powerful but dramatically harder to debug and coordinate." },
+          { q: "How much autonomy to give?", a: "Fully autonomous agents can take many actions without user approval \u2014 faster but riskier. Human-in-the-loop agents pause for confirmation on important decisions. Most production systems start with more human oversight." },
+          { q: "How to handle errors and loops?", a: "Agents can get stuck in loops or make mistakes. Set maximum iteration limits, implement self-reflection (\"Is this working?\"), and build in fallback paths. Timeouts and cost caps prevent runaway agents." },
+          { q: "Which framework to use?", a: "LangChain and LlamaIndex are popular but can be heavyweight. Anthropic's tool-use API, OpenAI's Assistants API, and lighter frameworks like Instructor offer simpler approaches. Many teams build custom loops for production." },
+        ].map((d, j) => {
+          const isOpen = openDec === `agent-${j}`;
+          return (
+            <div key={j} onClick={() => setOpenDec(isOpen ? null : `agent-${j}`)} style={{ padding: "10px 14px", cursor: "pointer", borderBottom: `1px solid ${C.border}`, background: isOpen ? C.surfaceAlt : "transparent", transition: "background 0.15s" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text }}>{d.q}</span>
+                <Toggle open={isOpen} />
+              </div>
+              {isOpen && <p style={{ fontFamily: SANS, fontSize: 14, color: C.textBody, lineHeight: 1.65, margin: "10px 0 0", animation: "fadeIn 0.2s" }}>{d.a}</p>}
+            </div>
+          );
+        })}
+
+        <div style={{ padding: "16px 20px", borderLeft: `3px solid ${C.purple}`, background: C.surface, marginTop: 28 }}>
+          <p style={{ fontFamily: SANS, fontSize: 14, color: C.textBody, lineHeight: 1.65, margin: 0 }}>
+            <strong>RAG vs. Agentic — when to use which?</strong> Use RAG when the task is "answer a question using these documents" — a single retrieval-then-generation step. Use an agent when the task requires multiple steps, tool use, or decision-making. Many production systems combine both: an agent that uses RAG as one of its tools.
+          </p>
+        </div>
+
+        <ThickRule />
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: C.textLight, marginBottom: 6 }}>Part III</div>
+        <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 400, margin: "0 0 6px", color: C.text }}>Design Tradeoffs</h2>
+        <p style={{ fontFamily: SANS, fontSize: 15, color: C.textBody, lineHeight: 1.7, maxWidth: 640, margin: "0 0 24px" }}>
+          Every decision in AI application design involves tension between competing goals. Improving accuracy often increases cost and latency. Adding safety layers adds latency. Understanding these tensions is essential.
+        </p>
+
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 2, padding: "16px 8px", marginBottom: 28 }}>
+          <TradeoffsDiagram />
+        </div>
+
+        {[
+          { left: { label: "Accuracy", color: C.green, desc: "Larger models, more retrieved chunks, reranking, chain-of-thought reasoning" }, right: { label: "Cost & Speed", color: C.orange, desc: "Smaller models, fewer chunks, simpler prompts, cached responses" }, tension: "The most accurate RAG system might cost 10\u00d7 more per query. For many use cases, a well-tuned cheaper approach is good enough." },
+          { left: { label: "Autonomy", color: C.purple, desc: "Agent takes many actions independently, faster completion, less user friction" }, right: { label: "Control", color: C.pink, desc: "Human approves each action, slower but safer, easier to debug" }, tension: "Fully autonomous agents are powerful but can make expensive mistakes. Start with human-in-the-loop and remove guardrails as you build trust." },
+          { left: { label: "Freshness", color: C.blue, desc: "Real-time data, frequent re-indexing, live retrieval from APIs" }, right: { label: "Reliability", color: C.teal, desc: "Curated knowledge base, tested and validated sources, stable results" }, tension: "Live data gives current answers but introduces failure modes. A curated knowledge base is more reliable but can become stale." },
+        ].map((t, i) => (
+          <div key={i} style={{ marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 8 }}>
+              <div style={{ padding: "12px 14px", borderLeft: `3px solid ${t.left.color}`, background: `${t.left.color}06` }}>
+                <div style={{ fontFamily: SERIF, fontSize: 14, color: t.left.color, marginBottom: 4 }}>{t.left.label}</div>
+                <div style={{ fontFamily: SANS, fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>{t.left.desc}</div>
+              </div>
+              <div style={{ padding: "12px 14px", borderLeft: `3px solid ${t.right.color}`, background: `${t.right.color}06` }}>
+                <div style={{ fontFamily: SERIF, fontSize: 14, color: t.right.color, marginBottom: 4 }}>{t.right.label}</div>
+                <div style={{ fontFamily: SANS, fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>{t.right.desc}</div>
+              </div>
+            </div>
+            <p style={{ fontFamily: SANS, fontSize: 13, color: C.textBody, lineHeight: 1.6, margin: 0, fontStyle: "italic", paddingLeft: 14 }}>{t.tension}</p>
+          </div>
+        ))}
+
+        <ThickRule s={{ margin: "36px 0 28px" }} />
+
+        <h3 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 400, margin: "0 0 6px", color: C.text }}>Guiding Principles</h3>
+        <p style={{ fontFamily: SANS, fontSize: 14, color: C.textMuted, margin: "0 0 20px" }}>Lessons from teams building production AI applications.</p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+          {[
+            { title: "Start with RAG, Not Agents", body: "Retrieval-augmented generation solves most \"the AI doesn't know X\" problems simply and reliably. Only add agentic capabilities when you genuinely need multi-step reasoning or tool use." },
+            { title: "Evaluate Before You Optimize", body: "Build an evaluation dataset of questions and expected answers before tuning anything. Without measurement, you're guessing. Automated evals (LLM-as-judge) help you iterate faster." },
+            { title: "Chunking Is Everything", body: "The quality of your RAG system depends more on how you chunk and index documents than on which LLM you use. Invest heavily in your ingestion pipeline \u2014 it's the foundation." },
+            { title: "Design for Transparency", body: "Users trust AI more when they can see why it gave an answer. Show sources, display confidence, expose the reasoning chain. A transparent mediocre system often beats an opaque excellent one." },
+            { title: "Cost Compounds Fast", body: "Every LLM call, embedding, and vector search costs money. An agent making 10 tool calls per request at scale gets expensive quickly. Cache aggressively, use smaller models where possible." },
+            { title: "Hallucinations Are Inevitable", body: "Even with RAG, LLMs can fabricate details. Design your UX to handle this: show sources, allow verification, avoid high-stakes autonomous decisions without human review." },
+          ].map((w, i) => (
+            <div key={i}>
+              <div style={{ fontFamily: SERIF, fontSize: 17, color: C.text, marginBottom: 8, paddingBottom: 8, borderBottom: `1px solid ${C.border}` }}>{w.title}</div>
+              <p style={{ fontFamily: SANS, fontSize: 14, color: C.textBody, lineHeight: 1.7, margin: 0 }}>{w.body}</p>
+            </div>
+          ))}
+        </div>
+
+      </main>
+
+      <footer style={{ borderTop: `1px solid ${C.border}`, padding: "20px 0", textAlign: "center" }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, color: C.textLight }}>A learning resource for AI application architecture · Click the diagrams to explore</div>
+      </footer>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
     </script>
 </body>
 </html>
