@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Large Language Models Work</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..900;1,8..60,300..900&family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:           #faf8f5;
+  --bg-card:      #f3f1ec;
+  --bg-hover:     #edeae3;
+  --border:       #e0ddd5;
+  --border-mid:   #ccc9c0;
+  --text-primary: #1a1815;
+  --text-sec:     #5c574f;
+  --text-cap:     #8c8780;
+
+  --c-data:       #b5621e;
+  --c-data-bg:    #fdf3e8;
+  --c-data-br:    #dda870;
+
+  --c-train:      #2a5298;
+  --c-train-bg:   #e8eef8;
+  --c-train-br:   #96b0d8;
+
+  --c-tok:        #1e7a5a;
+  --c-tok-bg:     #e6f4ee;
+  --c-tok-br:     #80c4a4;
+
+  --c-arch:       #5e3d9e;
+  --c-arch-bg:    #f0ecf8;
+  --c-arch-br:    #b0a0d8;
+
+  --c-gen:        #b03030;
+  --c-gen-bg:     #fce8e8;
+  --c-gen-br:     #d89090;
+
+  --c-app:        #1a5080;
+  --c-app-bg:     #e6eff8;
+  --c-app-br:     #88b0d0;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+  font-family:'Source Sans 3',sans-serif;
+  background:var(--bg);
+  color:var(--text-primary);
+  font-size:16px;
+  line-height:1.6;
+}
+
+/* ── HEADER ── */
+.site-header{
+  max-width:760px;margin:0 auto;
+  padding:52px 28px 36px;
+  border-bottom:1px solid var(--border);
+}
+.eyebrow{
+  font-size:11px;font-weight:600;
+  letter-spacing:0.13em;text-transform:uppercase;
+  color:var(--text-cap);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.eyebrow::before{
+  content:'';display:block;width:24px;height:1px;
+  background:var(--text-cap);
+}
+h1{
+  font-family:'Source Serif 4',serif;
+  font-size:40px;font-weight:700;line-height:1.12;
+  color:var(--text-primary);margin-bottom:16px;
+  letter-spacing:-0.01em;
+}
+.subtitle{
+  font-size:17px;color:var(--text-sec);
+  max-width:580px;line-height:1.7;
+}
+
+/* ── NAV ── */
+.tab-nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(250,248,245,0.95);
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--border);
+}
+.tab-nav-inner{
+  max-width:760px;margin:0 auto;
+  padding:0 28px;
+  display:flex;gap:0;
+  overflow-x:auto;scrollbar-width:none;
+}
+.tab-nav-inner::-webkit-scrollbar{display:none}
+.tab-btn{
+  display:flex;align-items:center;gap:7px;
+  font-family:'Source Sans 3',sans-serif;
+  font-size:13px;font-weight:500;
+  color:var(--text-sec);
+  background:none;border:none;
+  border-bottom:2px solid transparent;
+  padding:14px 14px;cursor:pointer;
+  white-space:nowrap;
+  transition:color 0.18s,border-color 0.18s;
+}
+.tab-btn:hover{color:var(--text-primary)}
+.tab-btn.active{
+  color:var(--text-primary);
+  border-bottom-color:var(--text-primary);
+  font-weight:600;
+}
+.tab-pip{
+  font-family:'Source Code Pro',monospace;
+  font-size:10px;font-weight:600;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:3px;padding:1px 5px;
+  color:var(--text-cap);
+  transition:background 0.18s,color 0.18s,border-color 0.18s;
+}
+.tab-btn.active .tab-pip{
+  background:var(--text-primary);
+  color:white;border-color:var(--text-primary);
+}
+
+/* ── CONTENT ── */
+.content{max-width:760px;margin:0 auto;padding:0 28px}
+.panel{display:none;padding:44px 0 64px}
+.panel.active{display:block;animation:fadeIn 0.25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── TYPOGRAPHY ── */
+.panel-lede{
+  font-size:11px;font-weight:600;
+  letter-spacing:0.13em;text-transform:uppercase;
+  color:var(--text-cap);margin-bottom:10px;
+}
+.panel-title{
+  font-family:'Source Serif 4',serif;
+  font-size:30px;font-weight:700;line-height:1.18;
+  margin-bottom:14px;letter-spacing:-0.01em;
+}
+.panel-intro{
+  font-size:15.5px;color:var(--text-sec);
+  max-width:630px;line-height:1.72;
+  margin-bottom:32px;
+}
+.section-head{
+  font-family:'Source Serif 4',serif;
+  font-size:19px;font-weight:600;
+  margin:32px 0 10px;
+}
+.prose p{
+  font-size:15px;color:var(--text-sec);
+  line-height:1.72;margin-bottom:12px;
+}
+.prose p:last-child{margin-bottom:0}
+strong{color:var(--text-primary);font-weight:600}
+code{
+  font-family:'Source Code Pro',monospace;
+  font-size:12.5px;
+  background:var(--bg-hover);
+  border:1px solid var(--border);
+  border-radius:3px;padding:1px 6px;
+  color:var(--text-primary);
+}
+
+/* ── DIAGRAM BOX ── */
+.diagram{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:28px 20px;
+  margin:24px 0;
+  overflow-x:auto;
+}
+.diagram-caption{
+  font-size:11.5px;font-weight:600;
+  letter-spacing:0.07em;text-transform:uppercase;
+  color:var(--text-cap);
+  margin-top:14px;text-align:center;
+}
+
+/* ── CALLOUT GRID ── */
+.callout-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;margin:24px 0;
+}
+.callout-grid-2{grid-template-columns:repeat(2,1fr)}
+.callout-grid-4{grid-template-columns:repeat(4,1fr)}
+.callout{
+  background:white;
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:16px 15px;
+  border-top:3px solid var(--border);
+  transition:transform 0.15s ease,box-shadow 0.15s ease;
+}
+.callout:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+.callout-label{
+  font-size:10.5px;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--text-cap);margin-bottom:6px;
+}
+.callout-text{
+  font-size:13.5px;color:var(--text-sec);
+  line-height:1.55;
+}
+
+/* ── EXPAND ── */
+.expand{
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;margin:12px 0;
+}
+.expand-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;padding:13px 18px;
+  background:white;border:none;cursor:pointer;
+  font-family:'Source Sans 3',sans-serif;
+  font-size:14px;font-weight:500;
+  color:var(--text-primary);text-align:left;
+  transition:background 0.15s;
+}
+.expand-btn:hover{background:var(--bg-card)}
+.expand-btn .icon{
+  font-size:20px;color:var(--text-cap);
+  line-height:1;transition:transform 0.2s ease;
+  flex-shrink:0;
+}
+.expand.open .expand-btn .icon{transform:rotate(45deg)}
+.expand-body{
+  display:none;padding:16px 18px;
+  background:var(--bg-card);
+  border-top:1px solid var(--border);
+  font-size:14px;color:var(--text-sec);
+  line-height:1.68;animation:fadeIn 0.2s ease;
+}
+.expand.open .expand-body{display:block}
+
+/* ── STEP LIST ── */
+.steps{display:flex;flex-direction:column;gap:16px;margin:20px 0}
+.step{display:flex;gap:14px;align-items:flex-start}
+.step-n{
+  flex-shrink:0;width:26px;height:26px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Source Code Pro',monospace;
+  font-size:12px;font-weight:600;
+  background:var(--text-primary);color:white;
+  margin-top:1px;
+}
+.step-c{font-size:14px;color:var(--text-sec);line-height:1.6;padding-top:3px}
+.step-c strong{display:block;font-size:14px;color:var(--text-primary);margin-bottom:2px}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:32px 0}
+
+/* ── TOKEN CHIPS ── */
+.token-row{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0;align-items:center}
+.t-chip{
+  display:inline-flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 10px;border-radius:5px;
+  font-family:'Source Code Pro',monospace;
+  transition:transform 0.15s ease,box-shadow 0.15s ease;
+  cursor:default;
+}
+.t-chip:hover{transform:translateY(-3px);box-shadow:0 4px 10px rgba(0,0,0,0.12)}
+.t-text{font-size:13px;font-weight:500}
+.t-id{font-size:10px;opacity:0.6;font-weight:400}
+
+/* ── PROB BARS ── */
+.prob-list{display:flex;flex-direction:column;gap:7px;margin:12px 0}
+.prob-item{display:flex;align-items:center;gap:10px}
+.prob-label{
+  font-family:'Source Code Pro',monospace;
+  font-size:13px;width:70px;flex-shrink:0;color:var(--text-primary)
+}
+.prob-bar-wrap{flex:1;height:18px;background:var(--bg-hover);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.prob-bar{height:100%;border-radius:2px;transition:width 0.3s ease}
+.prob-pct{font-size:12px;color:var(--text-cap);width:38px;text-align:right;font-family:'Source Code Pro',monospace}
+
+/* ── SVG shared ── */
+.flow-arrow{fill:none;stroke:#8c8780;stroke-width:1.5;marker-end:url(#arr)}
+
+/* ── FOOTER ── */
+.site-footer{
+  max-width:760px;margin:0 auto;
+  padding:20px 28px 48px;
+  border-top:1px solid var(--border);
+  font-size:12px;color:var(--text-cap);
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:8px;
+}
+
+@media(max-width:600px){
+  h1{font-size:28px}
+  .callout-grid{grid-template-columns:1fr 1fr}
+  .callout-grid-4{grid-template-columns:1fr 1fr}
+  .panel-title{font-size:23px}
+  .tab-btn{font-size:12px;padding:12px 10px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<header class="site-header">
+  <div class="eyebrow">Interactive Guide · Beginner Friendly</div>
+  <h1>How Large Language<br>Models Work</h1>
+  <p class="subtitle">A visual walkthrough — from raw text scraped off the internet to an AI assistant answering your questions and using tools on your behalf.</p>
+</header>
+
+<!-- ══════════════════ NAV ══════════════════ -->
+<nav class="tab-nav">
+  <div class="tab-nav-inner">
+    <button class="tab-btn active" onclick="showTab('overview',this)"><span class="tab-pip">01</span> The Big Picture</button>
+    <button class="tab-btn" onclick="showTab('training',this)"><span class="tab-pip">02</span> Training</button>
+    <button class="tab-btn" onclick="showTab('tokens',this)"><span class="tab-pip">03</span> Tokens</button>
+    <button class="tab-btn" onclick="showTab('transformer',this)"><span class="tab-pip">04</span> The Transformer</button>
+    <button class="tab-btn" onclick="showTab('inference',this)"><span class="tab-pip">05</span> Generating Text</button>
+    <button class="tab-btn" onclick="showTab('agents',this)"><span class="tab-pip">06</span> Chat &amp; Agents</button>
+  </div>
+</nav>
+
+<!-- ══════════════════ CONTENT ══════════════════ -->
+<main class="content">
+
+<!-- ─────────── PANEL 01: OVERVIEW ─────────── -->
+<section id="overview" class="panel active">
+  <div class="panel-lede">Section 01 — The Big Picture</div>
+  <h2 class="panel-title">What is a Large Language Model?</h2>
+  <p class="panel-intro">An LLM is a computer program that has learned to understand and generate human language by studying enormous amounts of text. It doesn't look up answers in a database — it has compressed patterns from billions of documents into a vast web of numerical weights, and it uses those weights to predict what words should come next.</p>
+
+  <!-- Pipeline Overview SVG -->
+  <div class="diagram">
+    <svg viewBox="0 0 660 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:420px">
+      <defs>
+        <marker id="arr" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#8c8780"/>
+        </marker>
+        <marker id="arr-b" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#2a5298"/>
+        </marker>
+        <marker id="arr-p" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#5e3d9e"/>
+        </marker>
+        <marker id="arr-g" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#1e7a5a"/>
+        </marker>
+      </defs>
+
+      <!-- Phase labels -->
+      <text x="85" y="26" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" font-weight="700" letter-spacing="0.1em" fill="#8c8780" text-transform="uppercase">PHASE 1</text>
+      <text x="248" y="26" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" font-weight="700" letter-spacing="0.1em" fill="#8c8780">PHASE 2</text>
+      <text x="411" y="26" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" font-weight="700" letter-spacing="0.1em" fill="#8c8780">PHASE 3</text>
+      <text x="574" y="26" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" font-weight="700" letter-spacing="0.1em" fill="#8c8780">PHASE 4</text>
+
+      <!-- Box 1: Collect Data (amber) -->
+      <rect x="20" y="38" width="130" height="84" rx="7" fill="#fdf3e8" stroke="#b5621e" stroke-width="1.5"/>
+      <text x="85" y="68" text-anchor="middle" font-family="Source Serif 4,serif" font-size="14" font-weight="700" fill="#b5621e">Collect Data</text>
+      <text x="85" y="86" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">Trillions of words</text>
+      <text x="85" y="100" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">from the internet,</text>
+      <text x="85" y="114" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">books &amp; code</text>
+
+      <!-- Arrow 1→2 -->
+      <path d="M150,80 L180,80" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr)"/>
+      <circle r="3.5" fill="#b5621e" opacity="0.8">
+        <animateMotion dur="1.8s" repeatCount="indefinite" path="M150,80 L178,80"/>
+      </circle>
+
+      <!-- Box 2: Pre-Train (blue) -->
+      <rect x="183" y="38" width="130" height="84" rx="7" fill="#e8eef8" stroke="#2a5298" stroke-width="1.5"/>
+      <text x="248" y="68" text-anchor="middle" font-family="Source Serif 4,serif" font-size="14" font-weight="700" fill="#2a5298">Pre-Training</text>
+      <text x="248" y="86" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">Model learns to</text>
+      <text x="248" y="100" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">predict the next</text>
+      <text x="248" y="114" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">word, billions of times</text>
+
+      <!-- Arrow 2→3 -->
+      <path d="M313,80 L343,80" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr)"/>
+      <circle r="3.5" fill="#2a5298" opacity="0.8">
+        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.6s" path="M313,80 L341,80"/>
+      </circle>
+
+      <!-- Box 3: Alignment (purple) -->
+      <rect x="346" y="38" width="130" height="84" rx="7" fill="#f0ecf8" stroke="#5e3d9e" stroke-width="1.5"/>
+      <text x="411" y="68" text-anchor="middle" font-family="Source Serif 4,serif" font-size="14" font-weight="700" fill="#5e3d9e">Alignment</text>
+      <text x="411" y="86" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">Fine-tuned on Q&amp;A,</text>
+      <text x="411" y="100" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">then shaped by</text>
+      <text x="411" y="114" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">human feedback</text>
+
+      <!-- Arrow 3→4 -->
+      <path d="M476,80 L506,80" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr)"/>
+      <circle r="3.5" fill="#5e3d9e" opacity="0.8">
+        <animateMotion dur="1.8s" repeatCount="indefinite" begin="1.2s" path="M476,80 L504,80"/>
+      </circle>
+
+      <!-- Box 4: Deploy (teal) -->
+      <rect x="509" y="38" width="130" height="84" rx="7" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="574" y="68" text-anchor="middle" font-family="Source Serif 4,serif" font-size="14" font-weight="700" fill="#1e7a5a">Deploy</text>
+      <text x="574" y="86" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">Serves millions</text>
+      <text x="574" y="100" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">of chats, tools,</text>
+      <text x="574" y="114" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">and AI agents</text>
+
+      <!-- Bottom note: time scale -->
+      <text x="85"  y="155" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#b5621e">weeks → months</text>
+      <text x="248" y="155" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#2a5298">weeks → months</text>
+      <text x="411" y="155" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#5e3d9e">days → weeks</text>
+      <text x="574" y="155" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#1e7a5a">ongoing</text>
+
+      <!-- connecting dotted timeline -->
+      <line x1="20" y1="170" x2="640" y2="170" stroke="#e0ddd5" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="330" y="185" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">Timeline: a frontier model may take 6–18 months from data collection to public release</text>
+    </svg>
+    <div class="diagram-caption">The four-phase life of a large language model</div>
+  </div>
+
+  <div class="callout-grid callout-grid-4">
+    <div class="callout" style="border-top-color:var(--c-data)">
+      <div class="callout-label" style="color:var(--c-data)">Collect</div>
+      <div class="callout-text">Billions of web pages, books, and code are gathered and cleaned.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-train)">
+      <div class="callout-label" style="color:var(--c-train)">Pre-Train</div>
+      <div class="callout-text">The model is taught to predict the next word — trillions of times.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-arch)">
+      <div class="callout-label" style="color:var(--c-arch)">Align</div>
+      <div class="callout-text">Human raters teach the model to be helpful, honest, and safe.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-tok)">
+      <div class="callout-label" style="color:var(--c-tok)">Deploy</div>
+      <div class="callout-text">The model is served via an API powering apps, chat, and agents.</div>
+    </div>
+  </div>
+
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      Why is it called "large"? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      The "large" refers to the number of <strong>parameters</strong> — the numerical dials inside the model that encode everything it has learned. Early models had millions. GPT-2 (2019) had 1.5 billion. Modern frontier models are estimated to have hundreds of billions or even trillions of parameters. More parameters means the model can store more nuanced patterns about language — but it also means far more compute and energy is required to train it.
+    </div>
+  </div>
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      How is this different from search or a database? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      A search engine finds existing documents. A database looks up stored facts. An LLM does something different: it has <strong>compressed</strong> statistical patterns from text into weights — it doesn't retrieve, it <em>generates</em>. This is why it can write poetry, explain concepts in new ways, or combine ideas it never saw together — but also why it can confidently produce plausible-sounding falsehoods.
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── PANEL 02: TRAINING ─────────── -->
+<section id="training" class="panel">
+  <div class="panel-lede">Section 02 — Training</div>
+  <h2 class="panel-title">How the Model Learns</h2>
+  <p class="panel-intro">Training is the process of teaching the model by making it practice a simple task — <strong>predict the next word</strong> — billions of times. Each time it gets something wrong, it adjusts its internal weights slightly. Over trillions of examples, this simple task forces the model to develop deep understanding of language, facts, and reasoning.</p>
+
+  <!-- Training Loop SVG -->
+  <div class="diagram">
+    <svg viewBox="0 0 660 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:380px">
+      <defs>
+        <marker id="arr2" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#8c8780"/>
+        </marker>
+        <marker id="arr2r" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#b03030"/>
+        </marker>
+        <marker id="arr2b" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#2a5298"/>
+        </marker>
+      </defs>
+
+      <!-- Step 1: Text sample -->
+      <rect x="20" y="30" width="148" height="68" rx="6" fill="#fdf3e8" stroke="#b5621e" stroke-width="1.5"/>
+      <text x="94" y="52" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#b5621e" text-transform="uppercase">TEXT SAMPLE</text>
+      <text x="94" y="68" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="11" fill="#5c574f">"The cat sat on</text>
+      <text x="94" y="82" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="11" fill="#5c574f">the ___"</text>
+
+      <!-- Arrow 1→2 -->
+      <path d="M168,64 L202,64" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Step 2: Model predicts -->
+      <rect x="205" y="30" width="148" height="68" rx="6" fill="#e8eef8" stroke="#2a5298" stroke-width="1.5"/>
+      <text x="279" y="52" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#2a5298">MODEL PREDICTS</text>
+      <text x="279" y="68" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" fill="#5c574f">"floor" — 32%</text>
+      <text x="279" y="83" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#8c8780">"mat" 28%, "rug" 14%</text>
+
+      <!-- Arrow 2→3 -->
+      <path d="M353,64 L387,64" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Step 3: Compare to truth -->
+      <rect x="390" y="30" width="148" height="68" rx="6" fill="#fce8e8" stroke="#b03030" stroke-width="1.5"/>
+      <text x="464" y="52" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#b03030">MEASURE ERROR</text>
+      <text x="464" y="68" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" fill="#5c574f">Answer: "mat"</text>
+      <text x="464" y="83" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="11" fill="#b03030">Loss = 1.42</text>
+
+      <!-- Down arrow from step 3 -->
+      <path d="M464,98 L464,138" fill="none" stroke="#b03030" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr2r)"/>
+      <text x="474" y="122" font-family="Source Sans 3,sans-serif" font-size="10" fill="#b03030">backprop</text>
+
+      <!-- Step 4: Update weights -->
+      <rect x="390" y="141" width="148" height="68" rx="6" fill="#e8eef8" stroke="#2a5298" stroke-width="1.5"/>
+      <text x="464" y="162" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#2a5298">UPDATE WEIGHTS</text>
+      <text x="464" y="178" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#5c574f">Nudge 175 billion</text>
+      <text x="464" y="193" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#5c574f">numbers slightly</text>
+
+      <!-- Arrow back (curved loop) -->
+      <path d="M390,175 C300,175 220,245 120,210 C80,197 50,170 50,130 C50,98 50,98 20,98" fill="none" stroke="#2a5298" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr2b)"/>
+      <text x="220" y="240" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#2a5298" font-style="italic">repeat trillions of times</text>
+
+      <!-- Counter indicator -->
+      <rect x="20" y="141" width="148" height="68" rx="6" fill="#f3f1ec" stroke="#e0ddd5" stroke-width="1.5"/>
+      <text x="94" y="164" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#8c8780">TRAINING SCALE</text>
+      <text x="94" y="182" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="13" fill="#1a1815">~10²¹ FLOPs</text>
+      <text x="94" y="197" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">computational operations</text>
+
+      <!-- Label: the loop -->
+      <text x="334" y="268" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">Each pass through this loop is called a <tspan font-family="Source Code Pro,monospace" font-size="10">gradient descent</tspan> step</text>
+    </svg>
+    <div class="diagram-caption">The training loop — repeated billions of times to build the model's knowledge</div>
+  </div>
+
+  <div class="section-head">The Two Training Phases</div>
+
+  <div class="callout-grid">
+    <div class="callout" style="border-top-color:var(--c-train)">
+      <div class="callout-label" style="color:var(--c-train)">Pre-Training</div>
+      <div class="callout-text">The model reads virtually all of the internet, Wikipedia, books, and code — and practices next-word prediction on all of it. This is the most expensive phase. It builds broad world knowledge.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-arch)">
+      <div class="callout-label" style="color:var(--c-arch)">Fine-Tuning &amp; RLHF</div>
+      <div class="callout-text">Human trainers provide example conversations and rate different responses. The model is updated to prefer helpful, honest, harmless replies. This shapes the "personality" of the assistant.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-tok)">
+      <div class="callout-label" style="color:var(--c-tok)">What it learns</div>
+      <div class="callout-text">Grammar, facts, reasoning patterns, coding syntax, style, tone — all encoded as numbers. No one programs these explicitly; they emerge from predicting text.</div>
+    </div>
+  </div>
+
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      What is "backpropagation"? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      When the model makes a wrong prediction, we need to figure out <em>which</em> of its 100+ billion weights were responsible for the error, and <em>how much</em> to adjust each one. Backpropagation is the algorithm that does this efficiently — it traces the error backwards through the network using calculus (the chain rule), computing a small "blame" value for each weight. Then each weight is nudged by a tiny amount in the direction that would have reduced the error.
+    </div>
+  </div>
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      What is RLHF? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      <strong>Reinforcement Learning from Human Feedback</strong>. After pre-training, human raters compare pairs of model responses ("which is better?"). Their preferences are used to train a separate <em>reward model</em> that scores responses. The LLM is then updated using RL to score higher on the reward model — essentially learning to produce responses humans find helpful and appropriate. This is how a raw text predictor becomes a helpful assistant.
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── PANEL 03: TOKENS ─────────── -->
+<section id="tokens" class="panel">
+  <div class="panel-lede">Section 03 — Tokens &amp; Embeddings</div>
+  <h2 class="panel-title">From Text to Numbers</h2>
+  <p class="panel-intro">Computers can only process numbers, not letters. Before any text reaches the model, it must be converted into a numerical form through two steps: <strong>tokenization</strong> (splitting text into chunks) and <strong>embedding</strong> (converting each chunk into a list of numbers that captures its meaning).</p>
+
+  <!-- Token visualization -->
+  <div class="diagram">
+    <svg viewBox="0 0 660 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:380px">
+      <defs>
+        <marker id="arr3" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#8c8780"/>
+        </marker>
+      </defs>
+
+      <!-- Raw text -->
+      <rect x="10" y="18" width="640" height="36" rx="5" fill="white" stroke="#e0ddd5" stroke-width="1.5"/>
+      <text x="330" y="40" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="14" fill="#1a1815">"Unbelievable! The transformer changed everything."</text>
+
+      <!-- Arrow down -->
+      <path d="M330,54 L330,76" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <text x="345" y="69" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">tokenize</text>
+
+      <!-- Token chips row -->
+      <!-- Token 1: "Un" -->
+      <rect x="10"  y="82" width="42" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="31"  y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">Un</text>
+      <text x="31"  y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">4110</text>
+
+      <!-- "believ" -->
+      <rect x="57"  y="82" width="56" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="85"  y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">believ</text>
+      <text x="85"  y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">48213</text>
+
+      <!-- "able" -->
+      <rect x="118" y="82" width="44" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="140" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">able</text>
+      <text x="140" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">1510</text>
+
+      <!-- "!" -->
+      <rect x="167" y="82" width="24" height="38" rx="5" fill="#f3f1ec" stroke="#ccc9c0" stroke-width="1.5"/>
+      <text x="179" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#5c574f">!</text>
+      <text x="179" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">0</text>
+
+      <!-- "The" -->
+      <rect x="196" y="82" width="38" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="215" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">The</text>
+      <text x="215" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">464</text>
+
+      <!-- "transform" -->
+      <rect x="239" y="82" width="84" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="281" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">transform</text>
+      <text x="281" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">6121</text>
+
+      <!-- "er" -->
+      <rect x="328" y="82" width="32" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="344" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">er</text>
+      <text x="344" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">263</text>
+
+      <!-- "changed" -->
+      <rect x="365" y="82" width="72" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="401" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">changed</text>
+      <text x="401" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">3522</text>
+
+      <!-- "every" -->
+      <rect x="442" y="82" width="52" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="468" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">every</text>
+      <text x="468" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">790</text>
+
+      <!-- "thing" -->
+      <rect x="499" y="82" width="50" height="38" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="524" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#1e7a5a">thing</text>
+      <text x="524" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">4029</text>
+
+      <!-- "." -->
+      <rect x="554" y="82" width="24" height="38" rx="5" fill="#f3f1ec" stroke="#ccc9c0" stroke-width="1.5"/>
+      <text x="566" y="97" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="12" font-weight="600" fill="#5c574f">.</text>
+      <text x="566" y="111" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">13</text>
+
+      <!-- Note: word count -->
+      <text x="10" y="139" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">8 words → <tspan font-weight="600" fill="#1e7a5a">11 tokens</tspan>  — words are split at sub-word boundaries to handle rare/new words efficiently</text>
+
+      <!-- Arrow: token → embedding -->
+      <path d="M100,152 L100,172" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr3)"/>
+      <text x="115" y="166" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">embed</text>
+
+      <!-- Embedding bars (for 3 tokens) -->
+      <!-- Token: "transform" -->
+      <text x="10" y="190" font-family="Source Code Pro,monospace" font-size="11" font-weight="600" fill="#1e7a5a">transform</text>
+      <rect x="10"  y="195" width="28" height="8" rx="2" fill="#2a5298" opacity="0.8"/>
+      <rect x="42"  y="195" width="16" height="8" rx="2" fill="#b03030" opacity="0.8"/>
+      <rect x="62"  y="195" width="36" height="8" rx="2" fill="#1e7a5a" opacity="0.8"/>
+      <rect x="102" y="195" width="22" height="8" rx="2" fill="#b5621e" opacity="0.8"/>
+      <rect x="128" y="195" width="14" height="8" rx="2" fill="#5e3d9e" opacity="0.8"/>
+      <rect x="146" y="195" width="30" height="8" rx="2" fill="#2a5298" opacity="0.8"/>
+      <text x="182" y="204" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">  ... 4096 values</text>
+
+      <text x="10" y="224" font-family="Source Code Pro,monospace" font-size="11" font-weight="600" fill="#1e7a5a">er</text>
+      <rect x="10"  y="229" width="14" height="8" rx="2" fill="#b5621e" opacity="0.8"/>
+      <rect x="28"  y="229" width="30" height="8" rx="2" fill="#2a5298" opacity="0.8"/>
+      <rect x="62"  y="229" width="10" height="8" rx="2" fill="#b03030" opacity="0.8"/>
+      <rect x="76"  y="229" width="40" height="8" rx="2" fill="#1e7a5a" opacity="0.8"/>
+      <rect x="120" y="229" width="18" height="8" rx="2" fill="#5e3d9e" opacity="0.8"/>
+      <rect x="142" y="229" width="24" height="8" rx="2" fill="#b5621e" opacity="0.8"/>
+      <text x="172" y="238" font-family="Source Code Pro,monospace" font-size="9" fill="#8c8780">  ... 4096 values</text>
+
+      <!-- Embedding explanation -->
+      <rect x="360" y="162" width="290" height="88" rx="6" fill="white" stroke="#e0ddd5" stroke-width="1"/>
+      <text x="375" y="181" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.05em" fill="#8c8780">WHAT IS AN EMBEDDING?</text>
+      <text x="375" y="198" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">Each token → a list of ~4,000–12,000</text>
+      <text x="375" y="212" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">numbers. Similar tokens have similar</text>
+      <text x="375" y="226" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">vectors. "king" − "man" + "woman"</text>
+      <text x="375" y="240" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">≈ "queen" in this space.</text>
+    </svg>
+    <div class="diagram-caption">Text → Tokens → Vocabulary IDs → Embedding vectors</div>
+  </div>
+
+  <div class="callout-grid">
+    <div class="callout" style="border-top-color:var(--c-tok)">
+      <div class="callout-label" style="color:var(--c-tok)">Vocabulary</div>
+      <div class="callout-text">Most LLMs use ~32,000–100,000 tokens. Common words are single tokens; rare words get split into sub-word pieces like <code>Un + believ + able</code>.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-tok)">
+      <div class="callout-label" style="color:var(--c-tok)">Context Window</div>
+      <div class="callout-text">The model can only "see" a limited number of tokens at once — its context window. Older models: 2,048 tokens. Modern models: 128,000–1,000,000+ tokens.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-tok)">
+      <div class="callout-label" style="color:var(--c-tok)">Embedding Space</div>
+      <div class="callout-text">Embeddings place tokens in a high-dimensional geometric space. Words with similar meanings end up near each other — meaning is encoded in position.</div>
+    </div>
+  </div>
+
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      Why not just use individual letters? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      Using individual characters would require the model to learn spelling from scratch and would make sequences very long — inefficient. Using whole words would make the vocabulary too large and fail on unknown words like new names or neologisms. <strong>Sub-word tokenization</strong> (the BPE or WordPiece approach) is the sweet spot: common words get their own token, rare words are split into familiar pieces. "ChatGPT" might be <code>Chat + G + PT</code>.
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── PANEL 04: TRANSFORMER ─────────── -->
+<section id="transformer" class="panel">
+  <div class="panel-lede">Section 04 — The Transformer Architecture</div>
+  <h2 class="panel-title">Inside the Neural Network</h2>
+  <p class="panel-intro">The "transformer" is the neural network architecture that powers all modern LLMs. It processes all tokens at once (not one by one) and uses a mechanism called <strong>attention</strong> to figure out which tokens are most relevant to each other — allowing it to understand long-range relationships in text.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 660 360" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:400px">
+      <defs>
+        <marker id="arr4" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#8c8780"/>
+        </marker>
+        <marker id="arr4p" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#5e3d9e"/>
+        </marker>
+      </defs>
+
+      <!-- LEFT: Transformer stack -->
+      <!-- Input tokens -->
+      <rect x="40" y="16" width="200" height="34" rx="5" fill="#fdf3e8" stroke="#b5621e" stroke-width="1.5"/>
+      <text x="140" y="37" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="12" font-weight="600" fill="#b5621e">Input Tokens + Positions</text>
+      <path d="M140,50 L140,68" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+      <!-- Embedding layer -->
+      <rect x="40" y="70" width="200" height="30" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="140" y="89" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="12" fill="#1e7a5a" font-weight="600">Token Embeddings</text>
+      <path d="M140,100 L140,118" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+      <!-- Transformer Block (repeats N times) -->
+      <rect x="30" y="120" width="220" height="140" rx="7" fill="#f0ecf8" stroke="#5e3d9e" stroke-width="2"/>
+      <text x="140" y="138" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" font-weight="700" letter-spacing="0.08em" fill="#5e3d9e">TRANSFORMER BLOCK × N</text>
+
+      <!-- Attention sublayer -->
+      <rect x="48" y="144" width="184" height="36" rx="5" fill="white" stroke="#b0a0d8" stroke-width="1.5"/>
+      <text x="140" y="160" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="12" font-weight="600" fill="#5e3d9e">Multi-Head Self-Attention</text>
+      <text x="140" y="174" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">"which tokens matter for each token?"</text>
+      <path d="M140,180 L140,196" fill="none" stroke="#5e3d9e" stroke-width="1.5" marker-end="url(#arr4p)"/>
+
+      <!-- Add & Norm -->
+      <rect x="48" y="198" width="84" height="22" rx="4" fill="#f0ecf8" stroke="#b0a0d8" stroke-width="1"/>
+      <text x="90" y="213" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#5e3d9e">Add &amp; Norm</text>
+      <path d="M140,220 L140,236" fill="none" stroke="#5e3d9e" stroke-width="1.5" marker-end="url(#arr4p)"/>
+
+      <!-- Feed Forward -->
+      <rect x="48" y="238" width="184" height="22" rx="4" fill="white" stroke="#b0a0d8" stroke-width="1.5"/>
+      <text x="140" y="253" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="12" font-weight="600" fill="#5e3d9e">Feed-Forward Network</text>
+
+      <!-- End of block -->
+      <path d="M140,260 L140,278" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+      <!-- Output -->
+      <rect x="40" y="280" width="200" height="30" rx="5" fill="#fce8e8" stroke="#b03030" stroke-width="1.5"/>
+      <text x="140" y="299" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="12" font-weight="600" fill="#b03030">Output Probabilities</text>
+      <text x="140" y="326" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">e.g. GPT-4 has ~96 blocks stacked</text>
+
+      <!-- RIGHT: Attention explanation -->
+      <text x="360" y="30" text-anchor="middle" font-family="Source Serif 4,serif" font-size="15" font-weight="700" fill="#1a1815">How Attention Works</text>
+      <text x="360" y="50" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">Each token "asks" every other token:</text>
+      <text x="360" y="65" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">"how relevant are you to me right now?"</text>
+
+      <!-- Example sentence for attention -->
+      <text x="300" y="100" font-family="Source Code Pro,monospace" font-size="12" fill="#1a1815">The animal didn't cross</text>
+      <text x="300" y="118" font-family="Source Code Pro,monospace" font-size="12" fill="#1a1815">the street because <tspan font-weight="600" fill="#5e3d9e">it</tspan></text>
+      <text x="300" y="136" font-family="Source Code Pro,monospace" font-size="12" fill="#1a1815">was too tired.</text>
+
+      <!-- Attention arrows from "it" to relevant words -->
+      <line x1="400" y1="120" x2="352" y2="104" stroke="#5e3d9e" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+      <line x1="400" y1="120" x2="300" y2="104" stroke="#5e3d9e" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+      <line x1="400" y1="120" x2="306" y2="118" stroke="#5e3d9e" stroke-width="1" stroke-linecap="round" opacity="0.3"/>
+
+      <!-- Legend -->
+      <rect x="300" y="152" width="170" height="58" rx="5" fill="white" stroke="#e0ddd5" stroke-width="1"/>
+      <text x="312" y="170" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">Attention weight from <tspan font-family="Source Code Pro" font-size="10" fill="#5e3d9e">it</tspan> →</text>
+      <line x1="312" y1="184" x2="348" y2="184" stroke="#5e3d9e" stroke-width="3" stroke-linecap="round"/>
+      <text x="356" y="188" font-family="Source Sans 3,sans-serif" font-size="11" fill="#5c574f">animal (high)</text>
+      <line x1="312" y1="200" x2="348" y2="200" stroke="#5e3d9e" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+      <text x="356" y="204" font-family="Source Sans 3,sans-serif" font-size="11" fill="#5c574f">street (low)</text>
+
+      <!-- Explanation -->
+      <rect x="294" y="224" width="350" height="120" rx="6" fill="#f0ecf8" stroke="#b0a0d8" stroke-width="1"/>
+      <text x="310" y="244" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#5e3d9e">MULTI-HEAD ATTENTION</text>
+      <text x="310" y="262" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">Each block has many "heads" — each</text>
+      <text x="310" y="278" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">looking for different relationships.</text>
+      <text x="310" y="296" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">One head may track grammar; another</text>
+      <text x="310" y="312" font-family="Source Sans 3,sans-serif" font-size="11.5" fill="#5c574f">may track entities; another, sentiment.</text>
+      <text x="310" y="330" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">GPT-4 uses 128 heads per block.</text>
+    </svg>
+    <div class="diagram-caption">The Transformer block — stacked 32–128 times in large models</div>
+  </div>
+
+  <div class="callout-grid">
+    <div class="callout" style="border-top-color:var(--c-arch)">
+      <div class="callout-label" style="color:var(--c-arch)">Self-Attention</div>
+      <div class="callout-text">Every token computes how much it should "attend to" every other token. This allows the model to resolve references ("it" → "animal") across any distance.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-arch)">
+      <div class="callout-label" style="color:var(--c-arch)">Feed-Forward</div>
+      <div class="callout-text">After attention, each token passes through a small neural network that applies further transformations — this is where most factual knowledge is thought to be stored.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-arch)">
+      <div class="callout-label" style="color:var(--c-arch)">Stacking Blocks</div>
+      <div class="callout-text">Stacking 32–128 identical blocks lets the model build increasingly abstract representations — from letters, to words, to concepts, to reasoning.</div>
+    </div>
+  </div>
+
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      Why was the Transformer such a breakthrough? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      Before Transformers (introduced in the 2017 paper <em>"Attention Is All You Need"</em>), language models processed text sequentially — one word at a time. This was slow and made it hard to connect words that were far apart in a sentence. The Transformer processes all tokens simultaneously and lets every token directly attend to every other token, no matter the distance. This made training far faster (parallelizable on GPUs) and allowed models to handle much longer contexts with far better comprehension.
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── PANEL 05: INFERENCE ─────────── -->
+<section id="inference" class="panel">
+  <div class="panel-lede">Section 05 — Generating Text</div>
+  <h2 class="panel-title">How the Model Writes</h2>
+  <p class="panel-intro">Once trained, the model generates text <strong>one token at a time</strong>. For each new token, it runs a forward pass through all its layers, producing a probability distribution over its entire vocabulary. It samples from that distribution — then appends the chosen token and repeats until done.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 660 240" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:400px">
+      <defs>
+        <marker id="arr5" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#8c8780"/>
+        </marker>
+        <marker id="arr5r" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#b03030"/>
+        </marker>
+      </defs>
+
+      <!-- Input context -->
+      <rect x="10" y="30" width="170" height="50" rx="6" fill="#fdf3e8" stroke="#b5621e" stroke-width="1.5"/>
+      <text x="95" y="50" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="600" fill="#b5621e">Input Prompt</text>
+      <text x="95" y="65" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="11" fill="#5c574f">"The cat sat on"</text>
+
+      <!-- Arrow to model -->
+      <path d="M180,55 L210,55" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr5)"/>
+
+      <!-- LLM box -->
+      <rect x="213" y="22" width="130" height="66" rx="6" fill="#e8eef8" stroke="#2a5298" stroke-width="2"/>
+      <text x="278" y="48" text-anchor="middle" font-family="Source Serif 4,serif" font-size="15" font-weight="700" fill="#2a5298">LLM</text>
+      <text x="278" y="65" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">96 transformer blocks</text>
+      <text x="278" y="78" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">running in parallel</text>
+
+      <!-- Arrow to probabilities -->
+      <path d="M343,55 L373,55" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr5)"/>
+
+      <!-- Probability bars -->
+      <rect x="376" y="16" width="170" height="102" rx="6" fill="white" stroke="#e0ddd5" stroke-width="1.5"/>
+      <text x="390" y="31" font-family="Source Sans 3,sans-serif" font-size="10" font-weight="600" letter-spacing="0.07em" fill="#8c8780">NEXT TOKEN PROBS</text>
+
+      <!-- mat -->
+      <text x="390" y="49" font-family="Source Code Pro,monospace" font-size="11" fill="#1a1815">mat</text>
+      <rect x="420" y="40" width="80" height="11" rx="2" fill="#e6f4ee" stroke="#80c4a4" stroke-width="1"/>
+      <rect x="420" y="40" width="62" height="11" rx="2" fill="#1e7a5a" opacity="0.75"/>
+      <text x="507" y="50" font-family="Source Code Pro,monospace" font-size="10" fill="#8c8780">32%</text>
+
+      <!-- floor -->
+      <text x="390" y="68" font-family="Source Code Pro,monospace" font-size="11" fill="#1a1815">floor</text>
+      <rect x="420" y="59" width="80" height="11" rx="2" fill="#e6f4ee" stroke="#80c4a4" stroke-width="1"/>
+      <rect x="420" y="59" width="44" height="11" rx="2" fill="#1e7a5a" opacity="0.75"/>
+      <text x="507" y="69" font-family="Source Code Pro,monospace" font-size="10" fill="#8c8780">22%</text>
+
+      <!-- roof -->
+      <text x="390" y="87" font-family="Source Code Pro,monospace" font-size="11" fill="#1a1815">roof</text>
+      <rect x="420" y="78" width="80" height="11" rx="2" fill="#e6f4ee" stroke="#80c4a4" stroke-width="1"/>
+      <rect x="420" y="78" width="26" height="11" rx="2" fill="#1e7a5a" opacity="0.75"/>
+      <text x="507" y="88" font-family="Source Code Pro,monospace" font-size="10" fill="#8c8780">13%</text>
+
+      <!-- … other -->
+      <text x="390" y="106" font-family="Source Code Pro,monospace" font-size="10" fill="#8c8780">+ 99,997 other tokens...</text>
+
+      <!-- Arrow down to sample -->
+      <path d="M461,118 L461,138" fill="none" stroke="#b03030" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr5r)"/>
+      <text x="475" y="132" font-family="Source Sans 3,sans-serif" font-size="10" fill="#b03030">sample</text>
+
+      <!-- Chosen token -->
+      <rect x="411" y="141" width="100" height="32" rx="5" fill="#fce8e8" stroke="#b03030" stroke-width="1.5"/>
+      <text x="461" y="162" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="14" font-weight="600" fill="#b03030">"mat"</text>
+
+      <!-- Loop back arrow -->
+      <path d="M411,157 C340,157 300,200 240,210 C170,220 80,200 50,170 C30,155 30,130 30,105 C30,80 30,80 10,80" fill="none" stroke="#2a5298" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr5)"/>
+
+      <!-- New combined input -->
+      <rect x="10" y="155" width="195" height="30" rx="5" fill="#e8eef8" stroke="#2a5298" stroke-width="1"/>
+      <text x="107" y="174" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="11" fill="#2a5298">"The cat sat on <tspan font-weight="700">mat</tspan>"</text>
+
+      <text x="330" y="220" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#8c8780">Append token and repeat — each new token conditions on all previous tokens</text>
+    </svg>
+    <div class="diagram-caption">The autoregressive generation loop — one token at a time</div>
+  </div>
+
+  <!-- Probability bars interactive -->
+  <div class="section-head">Temperature: Controlling Creativity</div>
+  <div class="prose">
+    <p>The <strong>temperature</strong> parameter controls how the model samples from its probability distribution. At low temperatures, the model almost always picks the most likely token — safe but predictable. At high temperatures, it spreads probability more evenly, producing more surprising (sometimes incoherent) results.</p>
+  </div>
+
+  <div class="diagram" style="padding:24px 28px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+      <!-- Low temp -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--c-train);margin-bottom:10px;text-transform:uppercase">Temp = 0.1 <span style="font-weight:400;color:var(--text-cap)">(focused)</span></div>
+        <div class="prob-list">
+          <div class="prob-item"><span class="prob-label">mat</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:94%;background:var(--c-train)"></div></div><span class="prob-pct">94%</span></div>
+          <div class="prob-item"><span class="prob-label">floor</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:4%;background:var(--c-train)"></div></div><span class="prob-pct">4%</span></div>
+          <div class="prob-item"><span class="prob-label">roof</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:2%;background:var(--c-train)"></div></div><span class="prob-pct">2%</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-cap);margin-top:8px">Near-deterministic. Good for factual tasks.</div>
+      </div>
+      <!-- Med temp -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--c-tok);margin-bottom:10px;text-transform:uppercase">Temp = 1.0 <span style="font-weight:400;color:var(--text-cap)">(balanced)</span></div>
+        <div class="prob-list">
+          <div class="prob-item"><span class="prob-label">mat</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:32%;background:var(--c-tok)"></div></div><span class="prob-pct">32%</span></div>
+          <div class="prob-item"><span class="prob-label">floor</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:22%;background:var(--c-tok)"></div></div><span class="prob-pct">22%</span></div>
+          <div class="prob-item"><span class="prob-label">roof</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:13%;background:var(--c-tok)"></div></div><span class="prob-pct">13%</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-cap);margin-top:8px">Default. Good for conversation and writing.</div>
+      </div>
+      <!-- High temp -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--c-gen);margin-bottom:10px;text-transform:uppercase">Temp = 2.0 <span style="font-weight:400;color:var(--text-cap)">(creative)</span></div>
+        <div class="prob-list">
+          <div class="prob-item"><span class="prob-label">mat</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:21%;background:var(--c-gen)"></div></div><span class="prob-pct">21%</span></div>
+          <div class="prob-item"><span class="prob-label">floor</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:19%;background:var(--c-gen)"></div></div><span class="prob-pct">19%</span></div>
+          <div class="prob-item"><span class="prob-label">roof</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:16%;background:var(--c-gen)"></div></div><span class="prob-pct">16%</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-cap);margin-top:8px">Spread out. Surprising but less reliable.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      What is "hallucination" and why does it happen? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      Hallucination is when a model generates confident-sounding but false information. It happens because the model is a <strong>pattern completer</strong>, not a fact retrieval system. When a question has a likely-sounding continuation in its training data — even if that continuation is wrong — the model may generate it. It has no internal "truth checker." The model doesn't know what it doesn't know, so it fills gaps with plausible-sounding text. This is why LLM outputs should always be verified for high-stakes factual claims.
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── PANEL 06: AGENTS ─────────── -->
+<section id="agents" class="panel">
+  <div class="panel-lede">Section 06 — Chat &amp; Agents</div>
+  <h2 class="panel-title">From Model to Product</h2>
+  <p class="panel-intro">A raw LLM is just a next-token predictor. To build a useful assistant or agent, developers wrap it in a <strong>conversation structure</strong>, give it access to <strong>tools</strong>, and let it <strong>reason in loops</strong> — repeatedly thinking, acting, and observing until a task is complete.</p>
+
+  <div class="section-head">The Chat Stack</div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 660 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:380px">
+      <defs>
+        <marker id="arr6" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#8c8780"/>
+        </marker>
+      </defs>
+
+      <!-- System Prompt box -->
+      <rect x="10" y="20" width="200" height="50" rx="6" fill="#f0ecf8" stroke="#5e3d9e" stroke-width="1.5"/>
+      <text x="110" y="40" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#5e3d9e">SYSTEM PROMPT</text>
+      <text x="110" y="57" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#5c574f">"You are a helpful assistant…"</text>
+
+      <!-- Conversation history -->
+      <rect x="10" y="82" width="200" height="50" rx="6" fill="#fdf3e8" stroke="#b5621e" stroke-width="1.5"/>
+      <text x="110" y="102" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#b5621e">CONVERSATION HISTORY</text>
+      <text x="110" y="119" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#5c574f">User: "…"  Assistant: "…"</text>
+
+      <!-- User message -->
+      <rect x="10" y="144" width="200" height="40" rx="6" fill="#e8eef8" stroke="#2a5298" stroke-width="1.5"/>
+      <text x="110" y="163" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#2a5298">NEW USER MESSAGE</text>
+      <text x="110" y="178" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#5c574f">"What's the weather like?"</text>
+
+      <!-- Combined arrow -->
+      <path d="M210,95 L245,95" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr6)"/>
+      <text x="226" y="89" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">concat</text>
+
+      <!-- All-in-one context box -->
+      <rect x="248" y="20" width="160" height="164" rx="6" fill="#e8eef8" stroke="#2a5298" stroke-width="2"/>
+      <text x="328" y="45" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#2a5298">FULL CONTEXT</text>
+      <text x="328" y="63" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#5c574f">Sent to the model</text>
+      <text x="328" y="79" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#5c574f">as one long string</text>
+      <text x="328" y="95" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" fill="#5c574f">of tokens</text>
+      <rect x="268" y="108" width="120" height="30" rx="4" fill="#2a5298"/>
+      <text x="328" y="127" text-anchor="middle" font-family="Source Serif 4,serif" font-size="14" font-weight="700" fill="white">LLM</text>
+      <text x="328" y="155" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">No built-in memory —</text>
+      <text x="328" y="168" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">context IS memory</text>
+
+      <!-- Output arrow -->
+      <path d="M408,112 L438,112" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr6)"/>
+
+      <!-- Response -->
+      <rect x="441" y="82" width="205" height="60" rx="6" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="543" y="102" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="700" letter-spacing="0.06em" fill="#1e7a5a">RESPONSE</text>
+      <text x="543" y="118" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#5c574f">"It's 18°C and sunny</text>
+      <text x="543" y="132" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="10" fill="#5c574f"> in Seattle today."</text>
+
+      <!-- Tool note -->
+      <rect x="441" y="155" width="205" height="30" rx="5" fill="#fdf3e8" stroke="#b5621e" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="543" y="170" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#b5621e">⚡ Or: call a weather API tool first</text>
+      <text x="543" y="182" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="10" fill="#8c8780">then incorporate result in reply</text>
+    </svg>
+    <div class="diagram-caption">How a chat turn works — system prompt + history + new message = model input</div>
+  </div>
+
+  <div class="section-head">AI Agents</div>
+  <div class="prose">
+    <p>An <strong>agent</strong> is an LLM that can take actions — call tools, browse the web, write and run code, send emails — and then observe the results to decide what to do next. Rather than answering in one shot, it runs a loop: <em>think → act → observe → think → act…</em> until the task is complete.</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 660 168" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:380px">
+      <defs>
+        <marker id="arr7" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#8c8780"/>
+        </marker>
+        <marker id="arr7b" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0,7 2.5,0 5" fill="#1a5080"/>
+        </marker>
+      </defs>
+
+      <!-- User task -->
+      <rect x="10" y="64" width="100" height="40" rx="5" fill="#fdf3e8" stroke="#b5621e" stroke-width="1.5"/>
+      <text x="60" y="81" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="11" font-weight="600" fill="#b5621e">User Task</text>
+      <text x="60" y="96" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#5c574f">"Book a flight…"</text>
+      <path d="M110,84 L130,84" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr7)"/>
+
+      <!-- Think 1 -->
+      <rect x="133" y="50" width="96" height="68" rx="5" fill="#e8eef8" stroke="#2a5298" stroke-width="1.5"/>
+      <text x="181" y="74" text-anchor="middle" font-family="Source Serif 4,serif" font-size="12" font-weight="700" fill="#2a5298">Think</text>
+      <text x="181" y="89" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" fill="#8c8780">"I need to search</text>
+      <text x="181" y="101" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" fill="#8c8780">for flights first"</text>
+      <path d="M229,84 L249,84" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr7)"/>
+
+      <!-- Tool Call -->
+      <rect x="252" y="50" width="100" height="68" rx="5" fill="#fdf3e8" stroke="#b5621e" stroke-width="2"/>
+      <text x="302" y="74" text-anchor="middle" font-family="Source Serif 4,serif" font-size="12" font-weight="700" fill="#b5621e">Tool Call</text>
+      <text x="302" y="89" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#5c574f">search_flights(</text>
+      <text x="302" y="101" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#5c574f">  "SEA→NYC")</text>
+      <path d="M352,84 L372,84" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr7)"/>
+
+      <!-- Observe -->
+      <rect x="375" y="50" width="100" height="68" rx="5" fill="#e6f4ee" stroke="#1e7a5a" stroke-width="1.5"/>
+      <text x="425" y="74" text-anchor="middle" font-family="Source Serif 4,serif" font-size="12" font-weight="700" fill="#1e7a5a">Observe</text>
+      <text x="425" y="89" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" fill="#8c8780">Tool returns:</text>
+      <text x="425" y="101" text-anchor="middle" font-family="Source Code Pro,monospace" font-size="9" fill="#5c574f">3 flights found</text>
+      <path d="M475,84 L495,84" fill="none" stroke="#8c8780" stroke-width="1.5" marker-end="url(#arr7)"/>
+
+      <!-- Think 2 -->
+      <rect x="498" y="50" width="88" height="68" rx="5" fill="#e8eef8" stroke="#2a5298" stroke-width="1.5"/>
+      <text x="542" y="74" text-anchor="middle" font-family="Source Serif 4,serif" font-size="12" font-weight="700" fill="#2a5298">Think</text>
+      <text x="542" y="89" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" fill="#8c8780">"Flight #2 is</text>
+      <text x="542" y="101" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" fill="#8c8780">best — book it"</text>
+
+      <!-- Loop back -->
+      <path d="M542,118 C542,145 420,155 300,155 C200,155 181,145 181,118" fill="none" stroke="#2a5298" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="348" y="152" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9.5" fill="#2a5298">loop continues until task complete</text>
+
+      <!-- Done arrow -->
+      <path d="M586,84 L620,84" fill="none" stroke="#1e7a5a" stroke-width="1.5" marker-end="url(#arr7)"/>
+      <text x="648" y="90" text-anchor="middle" font-family="Source Sans 3,sans-serif" font-size="9" fill="#1e7a5a">Done</text>
+    </svg>
+    <div class="diagram-caption">The agent loop — think, use a tool, observe the result, repeat</div>
+  </div>
+
+  <div class="callout-grid">
+    <div class="callout" style="border-top-color:var(--c-arch)">
+      <div class="callout-label" style="color:var(--c-arch)">System Prompt</div>
+      <div class="callout-text">A hidden instruction that shapes the model's behavior — its persona, constraints, and available tools. Users typically don't see it.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-app)">
+      <div class="callout-label" style="color:var(--c-app)">Tools</div>
+      <div class="callout-text">Functions the model can call: web search, code execution, file reading, database queries, sending emails. The model decides when and how to call them.</div>
+    </div>
+    <div class="callout" style="border-top-color:var(--c-tok)">
+      <div class="callout-label" style="color:var(--c-tok)">Memory</div>
+      <div class="callout-text">LLMs have no built-in long-term memory. Context window = working memory. Agents use external databases (RAG) to retrieve relevant past information.</div>
+    </div>
+  </div>
+
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      What is RAG (Retrieval-Augmented Generation)? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      RAG is a technique for giving an LLM access to specific knowledge it wasn't trained on — like a company's private documents. When a user asks a question, a search system first retrieves the most relevant chunks of text from a database, then stuffs them into the context window alongside the user's query. The model then answers based on the retrieved content rather than (only) its trained weights. This reduces hallucination and keeps the model's knowledge up to date without retraining.
+    </div>
+  </div>
+  <div class="expand">
+    <button class="expand-btn" onclick="toggle(this)">
+      What are the current limits of LLMs? <span class="icon">+</span>
+    </button>
+    <div class="expand-body">
+      Despite impressive capabilities, LLMs have significant limits today: <strong>Hallucination</strong> — they generate confident falsehoods. <strong>Context window</strong> — they can only process so much text at once. <strong>Reasoning</strong> — they can fail on multi-step logical problems despite appearing capable. <strong>Recency</strong> — training data has a cutoff date. <strong>World interaction</strong> — agents still struggle with reliable, long-horizon task completion. <strong>Cost</strong> — large models are expensive to run at scale. Research in all these areas is extremely active.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <span>How Large Language Models Work · A Visual Guide</span>
+  <span>Diagrams and illustrations are simplified for conceptual clarity</span>
+</footer>
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+document.querySelectorAll('.expand-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const section = btn.closest('.expand');
+    section.classList.toggle('open');
+  });
+});
+</script>
+</body>
+</html>
