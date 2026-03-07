@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture &amp; NFR Explorer</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Source+Sans+3:wght@300;400;500;600&family=Source+Code+Pro:wght@400;500&display=swap');
+
+      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+        --sans: 'Source Sans 3', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        --mono: 'Source Code Pro', 'Menlo', 'Consolas', monospace;
+
+        --bg: #ffffff;
+        --bg-warm: #faf8f5;
+        --bg-annotation: #f2efe8;
+        --border: #e0ddd5;
+        --border-light: #eceae4;
+        --rule: #ccc8bc;
+
+        --text-primary: #1a1a1a;
+        --text-secondary: #5a5a5a;
+        --text-tertiary: #888888;
+        --text-caption: #999999;
+
+        --accent-blue: #326fa8;
+        --accent-blue-light: #e8f0fa;
+        --accent-red: #c43b2e;
+        --accent-red-light: #fcecea;
+        --accent-amber: #b38600;
+        --accent-amber-light: #fdf5e0;
+        --accent-teal: #1a8a7d;
+        --accent-teal-light: #e6f5f3;
+        --accent-purple: #6b4c9a;
+        --accent-purple-light: #f0ecf5;
+      }
+
+      body {
+        font-family: var(--sans);
+        background: var(--bg);
+        color: var(--text-primary);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+const { useState } = React;
+
+const SERIF = "'Source Serif 4','Georgia',serif";
+const SANS = "'Source Sans 3','Helvetica Neue',sans-serif";
+const MONO = "'Source Code Pro','Menlo','Consolas',monospace";
+
+const C = {
+  bg: "#ffffff", bgWarm: "#faf8f5", bgAnnotation: "#f2efe8",
+  surface: "#ffffff", surfaceAlt: "#f5f3ee",
+  border: "#e0ddd5", borderLight: "#eceae4", rule: "#ccc8bc",
+  text: "#1a1a1a", textBody: "#333333", textSecondary: "#5a5a5a",
+  textMuted: "#888888", textCaption: "#999999",
+  blue: "#326fa8", blueLight: "#e8f0fa",
+  red: "#c43b2e", redLight: "#fcecea",
+  amber: "#b38600", amberLight: "#fdf5e0",
+  teal: "#1a8a7d", tealLight: "#e6f5f3",
+  purple: "#6b4c9a", purpleLight: "#f0ecf5",
+};
+
+const LAYERS = {
+  ui:   { color: C.amber, light: C.amberLight, label: "User Interaction" },
+  biz:  { color: C.blue,  light: C.blueLight,  label: "Business Logic" },
+  data: { color: C.teal,  light: C.tealLight,   label: "Data" },
+  infra:{ color: C.purple,light: C.purpleLight, label: "Infrastructure" },
+};
+
+const Rule = () => <hr style={{ border: "none", borderTop: `1px solid ${C.border}`, margin: "32px 0" }} />;
+const ThickRule = () => <hr style={{ border: "none", borderTop: `3px double ${C.text}`, margin: "40px 0" }} />;
+
+const Tag = ({ children, color }) => (
+  <span style={{
+    display: "inline-block", padding: "2px 10px", borderRadius: 2,
+    fontSize: 11, fontFamily: MONO, fontWeight: 500, letterSpacing: "0.04em",
+    color: color || C.textMuted, border: `1px solid ${color || C.border}`,
+    background: color ? `${color}12` : "transparent", marginRight: 6, marginBottom: 4
+  }}>{children}</span>
+);
+
+const Toggle = ({ open }) => (
+  <span style={{
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    width: 22, height: 22, borderRadius: "50%", border: `1px solid ${C.border}`,
+    fontSize: 14, color: C.textMuted, transition: "all 0.2s",
+    fontFamily: SANS, transform: open ? "rotate(45deg)" : "none", flexShrink: 0
+  }}>+</span>
+);
+
+// ─── Data ──────────────────────────────────────────
+
+const layerData = [
+  {
+    id: "ui", icon: "UI",
+    title: "User Interaction Layer",
+    subtitle: "Presentation Layer — What users see and touch",
+    responsibilities: ["Display data to users", "Capture and validate user input", "Send requests to backend services"],
+    examples: ["Web applications", "Mobile apps", "Chat interfaces", "Admin dashboards"],
+    nfrs: ["Usability", "Accessibility", "Performance", "Responsiveness", "Client-Side Security"],
+    decisions: [
+      "Web vs Mobile — choosing the right platform for your audience",
+      "Accessibility design — ensuring inclusive experience for all users"
+    ]
+  },
+  {
+    id: "biz", icon: "BL",
+    title: "Business Logic Layer",
+    subtitle: "Application / Services Layer — The brain of the system",
+    responsibilities: ["Apply business rules and validations", "Process transactions", "Coordinate data from multiple systems", "Manage authentication & authorization"],
+    examples: ["Order processing engines", "Workflow orchestrators", "API gateways", "Microservice clusters"],
+    nfrs: ["Scalability", "Reliability", "Maintainability", "Observability", "Latency"],
+    decisions: [
+      "Monolith vs Microservices — balancing complexity against scalability",
+      "API strategy — REST, GraphQL, gRPC, or event-driven messaging"
+    ]
+  },
+  {
+    id: "data", icon: "DL",
+    title: "Data Layer",
+    subtitle: "Persistence Layer — Where information lives",
+    responsibilities: ["Ensure data durability and consistency", "Support efficient querying", "Manage backups and replication"],
+    examples: ["Relational databases (SQL)", "NoSQL databases", "Vector databases", "Data warehouses & object storage"],
+    nfrs: ["Data Integrity", "Security", "Availability", "Governance", "Disaster Recovery"],
+    decisions: [
+      "SQL vs NoSQL vs Vector DB — matching data models to use cases",
+      "Replication strategy — ensuring availability and recovery"
+    ]
+  },
+  {
+    id: "infra", icon: "IL",
+    title: "Infrastructure Layer",
+    subtitle: "Environment & Deployment — The foundation it all runs on",
+    responsibilities: ["Provision compute and storage resources", "Handle scaling and load balancing", "Monitor system health"],
+    examples: ["Cloud platforms (AWS, Azure, GCP)", "On-premise servers", "Containers (Docker, Kubernetes)", "CI/CD pipelines"],
+    nfrs: ["Scalability", "High Availability", "Cost Efficiency", "Sustainability", "Compliance"],
+    decisions: [
+      "Cloud vs On-Prem — weighing flexibility against control and cost",
+      "Containerization — enabling portable, repeatable deployments"
+    ]
+  }
+];
+
+const nfrData = [
+  { title: "Performance", desc: "How fast the system responds and processes requests under expected conditions.", example: 'e.g. "Response time under 2 seconds"', color: C.red },
+  { title: "Availability", desc: "The proportion of time the system is operational and accessible to users.", example: 'e.g. "99.9% uptime (8.76 hrs downtime/yr)"', color: C.teal },
+  { title: "Security", desc: "Protecting data and operations from unauthorized access and threats.", example: 'e.g. "Encrypted data at rest and in transit"', color: C.purple },
+  { title: "Scalability", desc: "The ability to handle growth in users, data, or transactions gracefully.", example: 'e.g. "Supports 50,000 concurrent users"', color: C.blue },
+  { title: "Maintainability", desc: "How easily the system can be modified, updated, and debugged over time.", example: 'e.g. "Modular codebase with clear separation of concerns"', color: C.amber },
+  { title: "Observability", desc: "The ability to understand internal system state through logs, metrics, and traces.", example: 'e.g. "Centralized logging with real-time alerting"', color: C.blue },
+  { title: "Sustainability", desc: "Minimizing the environmental impact of compute, storage, and operations.", example: 'e.g. "Carbon-aware workload scheduling"', color: C.teal },
+  { title: "Cost Efficiency", desc: "Optimizing resource usage to deliver value within budget constraints.", example: 'e.g. "Auto-scaling to reduce idle resource costs"', color: C.amber },
+  { title: "Responsible AI / Governance", desc: "Ensuring AI systems are transparent, accountable, and grounded in reliable data.", example: 'e.g. "RAG architecture to cite sources and avoid hallucinations"', color: C.purple },
+];
+
+const scenarioData = {
+  scalability: {
+    label: "Scalability",
+    requirement: "The system must support 100,000 concurrent users.",
+    steps: [
+      { layer: "infra", title: "Infrastructure Decision", desc: "Deploy on cloud infrastructure with auto-scaling groups and load balancers to distribute traffic across multiple instances." },
+      { layer: "biz", title: "Business Logic Decision", desc: "Adopt a microservices architecture so individual services can scale independently based on demand." },
+      { layer: "data", title: "Data Layer Decision", desc: "Implement caching strategies (e.g., Redis) and use read replicas to offload database pressure." },
+      { layer: "ui", title: "Presentation Decision", desc: "Use a CDN for static assets and implement lazy loading to reduce initial page weight." },
+    ]
+  },
+  security: {
+    label: "Security",
+    requirement: "Sensitive user data must be protected end-to-end.",
+    steps: [
+      { layer: "infra", title: "Infrastructure Decision", desc: "Implement network segmentation, firewalls, and private subnets. Enable audit logging at the infrastructure level." },
+      { layer: "biz", title: "Business Logic Decision", desc: "Enforce role-based access control (RBAC) and implement authentication middleware across all service endpoints." },
+      { layer: "data", title: "Data Layer Decision", desc: "Encrypt data at rest and in transit. Apply column-level encryption on PII fields and manage keys with a dedicated KMS." },
+      { layer: "ui", title: "Presentation Decision", desc: "Enforce HTTPS, implement CSRF/XSS protections, and mask sensitive data in the UI." },
+    ]
+  },
+  rai: {
+    label: "Responsible AI",
+    requirement: "The system must cite sources and avoid hallucinations in AI responses.",
+    steps: [
+      { layer: "infra", title: "Infrastructure Decision", desc: "Provision GPU-accelerated compute for embedding generation and model inference. Set up vector database infrastructure." },
+      { layer: "biz", title: "Business Logic Decision", desc: "Implement a Retrieval-Augmented Generation (RAG) pipeline with validation logic to ground responses in retrieved documents." },
+      { layer: "data", title: "Data Layer Decision", desc: "Store curated knowledge bases in a vector database with metadata for provenance tracking and source attribution." },
+      { layer: "ui", title: "Presentation Decision", desc: "Display inline citations, source links, and confidence indicators so users can verify AI-generated responses." },
+    ]
+  }
+};
+
+const quizData = [
+  { q: "What do non-functional requirements describe?", opts: ["What a system does", "How well a system performs", "The database schema", "The programming language used"], correct: 1, good: "Exactly! NFRs describe quality attributes like performance, security, and availability — the 'how well' of a system.", bad: "Not quite. NFRs describe how well a system performs (quality attributes), not what features it provides." },
+  { q: "If you need to support 100,000 concurrent users, which layer primarily handles load balancing?", opts: ["User Interaction Layer", "Business Logic Layer", "Data Layer", "Infrastructure Layer"], correct: 3, good: "Right! The Infrastructure Layer provisions load balancers, auto-scaling groups, and compute resources.", bad: "The Infrastructure Layer is responsible for load balancing, scaling, and provisioning resources to meet demand." },
+  { q: "Which layer enforces business rules and manages authentication logic?", opts: ["User Interaction Layer", "Business Logic Layer", "Data Layer", "Infrastructure Layer"], correct: 1, good: "Correct! The Business Logic Layer is the 'brain' that enforces rules, coordinates workflows, and manages auth.", bad: "The Business Logic Layer handles business rules, validations, transaction processing, and authentication logic." },
+  { q: "A Retrieval-Augmented Generation (RAG) architecture addresses which NFR?", opts: ["Performance", "Cost Efficiency", "Responsible AI / Governance", "Accessibility"], correct: 2, good: "That's right! RAG architectures help ground AI outputs in real data, ensuring source citation and reducing hallucinations.", bad: "RAG addresses Responsible AI / Governance by grounding AI responses in real documents and citing sources." },
+  { q: "Which is NOT a typical responsibility of the Data Layer?", opts: ["Ensure data durability and consistency", "Support efficient querying", "Handle scaling and load balancing", "Manage backups and replication"], correct: 2, good: "Correct! Scaling and load balancing are Infrastructure Layer responsibilities, not Data Layer.", bad: "Scaling and load balancing fall under the Infrastructure Layer. The Data Layer focuses on storage, querying, and data integrity." },
+  { q: "Choosing between a monolith and microservices primarily addresses which NFRs?", opts: ["Usability & Accessibility", "Scalability, Reliability & Maintainability", "Data Integrity & Governance", "Sustainability & Cost Efficiency"], correct: 1, good: "Nice! Monolith vs Microservices is a Business Logic Layer decision that directly impacts scalability, reliability, and maintainability.", bad: "Monolith vs Microservices is primarily about scalability, reliability, and maintainability — core Business Logic Layer concerns." },
+  { q: "What drives architectural decisions?", opts: ["Functional requirements", "Non-functional requirements", "The programming language", "The project manager"], correct: 1, good: "Exactly! Functional requirements drive features, but NFRs drive architecture.", bad: "Functional requirements drive features. Non-functional requirements drive architectural decisions." },
+];
+
+const mappingData = [
+  { layer: "ui", name: "User Interaction Layer", decisions: "Web vs Mobile, Accessibility design", nfrs: "Usability, Performance, Accessibility" },
+  { layer: "biz", name: "Business Logic Layer", decisions: "Monolith vs Microservices, API strategy", nfrs: "Scalability, Reliability, Maintainability" },
+  { layer: "data", name: "Data Layer", decisions: "SQL vs NoSQL vs Vector DB", nfrs: "Integrity, Availability, Security" },
+  { layer: "infra", name: "Infrastructure Layer", decisions: "Cloud vs On-Prem, Containerization", nfrs: "Availability, Cost, Sustainability" },
+];
+
+// ─── Architecture Diagram (SVG) ───────────────────
+
+const ArchDiagram = () => {
+  const W = 680, H = 280;
+  const layers = [
+    { y: 20,  label: "User Interaction", abbr: "UI", color: C.amber },
+    { y: 85,  label: "Business Logic",   abbr: "BL", color: C.blue },
+    { y: 150, label: "Data",             abbr: "DL", color: C.teal },
+    { y: 215, label: "Infrastructure",   abbr: "IL", color: C.purple },
+  ];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 680, display: "block", margin: "24px auto" }}>
+      {layers.map((l, i) => (
+        <g key={i}>
+          <rect x={40} y={l.y} width={600} height={50} rx={4}
+            fill={`${l.color}08`} stroke={l.color} strokeWidth={1} />
+          <rect x={40} y={l.y} width={4} height={50} rx={2} fill={l.color} />
+          <text x={60} y={l.y + 22} fontSize={13} fontFamily={SERIF} fontWeight={600} fill={C.text}>{l.label} Layer</text>
+          <text x={60} y={l.y + 38} fontSize={10} fontFamily={MONO} fill={C.textMuted} letterSpacing="0.04em">{l.abbr}</text>
+          {/* Right-side NFR tags */}
+          {i === 0 && <text x={620} y={l.y + 30} fontSize={10} fontFamily={MONO} fill={l.color} textAnchor="end">Usability · Performance · Accessibility</text>}
+          {i === 1 && <text x={620} y={l.y + 30} fontSize={10} fontFamily={MONO} fill={l.color} textAnchor="end">Scalability · Reliability · Maintainability</text>}
+          {i === 2 && <text x={620} y={l.y + 30} fontSize={10} fontFamily={MONO} fill={l.color} textAnchor="end">Integrity · Availability · Security</text>}
+          {i === 3 && <text x={620} y={l.y + 30} fontSize={10} fontFamily={MONO} fill={l.color} textAnchor="end">Availability · Cost · Sustainability</text>}
+          {/* Connector */}
+          {i < 3 && (
+            <line x1={340} y1={l.y + 50} x2={340} y2={l.y + 65}
+              stroke={C.border} strokeWidth={1.2} strokeDasharray="3 2" />
+          )}
+        </g>
+      ))}
+    </svg>
+  );
+};
+
+// ─── Components ───────────────────────────────────
+
+const LayerCard = ({ layer, isOpen, onToggle }) => {
+  const lc = LAYERS[layer.id];
+  return (
+    <div
+      onClick={onToggle}
+      style={{
+        background: isOpen ? lc.light : C.surface,
+        border: `1px solid ${isOpen ? lc.color : C.border}`,
+        borderLeft: `4px solid ${lc.color}`,
+        borderRadius: 6, padding: "16px 20px", cursor: "pointer",
+        transition: "all 0.2s", marginBottom: 8,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text }}>{layer.title}</div>
+          <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 2 }}>{layer.subtitle}</div>
+        </div>
+        <Toggle open={isOpen} />
+      </div>
+      {isOpen && (
+        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ background: `${lc.color}06`, border: `1px solid ${C.borderLight}`, borderRadius: 4, padding: 14 }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 8 }}>Responsibilities</div>
+            {layer.responsibilities.map((r, i) => (
+              <div key={i} style={{ fontSize: 14, color: C.textBody, marginBottom: 4, paddingLeft: 14, position: "relative" }}>
+                <span style={{ position: "absolute", left: 0, color: C.textCaption }}>→</span>{r}
+              </div>
+            ))}
+          </div>
+          <div style={{ background: `${lc.color}06`, border: `1px solid ${C.borderLight}`, borderRadius: 4, padding: 14 }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 8 }}>Examples</div>
+            {layer.examples.map((e, i) => (
+              <div key={i} style={{ fontSize: 14, color: C.textBody, marginBottom: 4, paddingLeft: 14, position: "relative" }}>
+                <span style={{ position: "absolute", left: 0, color: C.textCaption }}>→</span>{e}
+              </div>
+            ))}
+          </div>
+          <div style={{ gridColumn: "1 / -1", background: `${lc.color}06`, border: `1px solid ${C.borderLight}`, borderRadius: 4, padding: 14 }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 8 }}>Key NFRs Impacted</div>
+            <div>{layer.nfrs.map((n, i) => <Tag key={i} color={lc.color}>{n}</Tag>)}</div>
+          </div>
+          <div style={{ gridColumn: "1 / -1", background: `${lc.color}06`, border: `1px solid ${C.borderLight}`, borderRadius: 4, padding: 14 }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 8 }}>Typical Decisions</div>
+            {layer.decisions.map((d, i) => (
+              <div key={i} style={{ fontSize: 14, color: C.textBody, marginBottom: 4, paddingLeft: 14, position: "relative" }}>
+                <span style={{ position: "absolute", left: 0, color: C.textCaption }}>→</span>{d}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const NFRCard = ({ nfr }) => (
+  <div style={{
+    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+    padding: "18px 20px", transition: "all 0.15s",
+  }}
+  onMouseEnter={e => { e.currentTarget.style.borderColor = nfr.color; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"; }}
+  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
+  >
+    <div style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, marginBottom: 6, color: C.text }}>{nfr.title}</div>
+    <div style={{ fontSize: 14, color: C.textSecondary, marginBottom: 10, lineHeight: 1.5 }}>{nfr.desc}</div>
+    <div style={{ fontFamily: MONO, fontSize: 12, background: C.bgWarm, border: `1px solid ${C.borderLight}`, padding: "8px 10px", borderRadius: 4, color: nfr.color }}>{nfr.example}</div>
+  </div>
+);
+
+const ScenarioExplorer = () => {
+  const [active, setActive] = useState("scalability");
+  const scenario = scenarioData[active];
+  return (
+    <div style={{ background: C.bgWarm, border: `1px solid ${C.border}`, borderRadius: 6, padding: "28px 24px" }}>
+      <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Scenario Explorer</div>
+      <div style={{ fontSize: 14, color: C.textSecondary, marginBottom: 20 }}>Choose an NFR priority and trace how it ripples through every architectural layer.</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
+        {Object.entries(scenarioData).map(([key, s]) => (
+          <button key={key} onClick={() => setActive(key)} style={{
+            fontFamily: SANS, fontSize: 13, fontWeight: active === key ? 600 : 400,
+            padding: "6px 16px", borderRadius: 3, cursor: "pointer",
+            border: `1px solid ${active === key ? C.text : C.border}`,
+            background: active === key ? C.text : "transparent",
+            color: active === key ? C.bg : C.textSecondary,
+            transition: "all 0.15s",
+          }}>{s.label}</button>
+        ))}
+      </div>
+      {/* Requirement */}
+      <div style={{ borderLeft: `3px solid ${C.red}`, background: C.redLight, padding: "12px 16px", borderRadius: "0 4px 4px 0", marginBottom: 16 }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 4 }}>The Requirement</div>
+        <div style={{ fontSize: 15, fontFamily: SERIF, fontStyle: "italic", color: C.text }}>"{scenario.requirement}"</div>
+      </div>
+      {/* Steps */}
+      {scenario.steps.map((step, i) => {
+        const lc = LAYERS[step.layer];
+        return (
+          <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "12px 14px", background: C.surface, border: `1px solid ${C.borderLight}`, borderRadius: 4, marginBottom: 6 }}>
+            <div style={{ fontFamily: SERIF, fontSize: 22, color: lc.color, flexShrink: 0, width: 28, textAlign: "center", lineHeight: 1, paddingTop: 2 }}>{i + 1}</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 3, color: C.text }}>{step.title}</div>
+              <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>{step.desc}</div>
+              <Tag color={lc.color}>{lc.label} Layer</Tag>
+            </div>
+          </div>
+        );
+      })}
+      {/* Insight */}
+      <div style={{ borderLeft: `3px solid ${C.amber}`, background: C.amberLight, padding: "14px 18px", borderRadius: "0 4px 4px 0", marginTop: 20 }}>
+        <div style={{ fontFamily: SERIF, fontSize: 15, fontStyle: "italic", color: C.text, lineHeight: 1.55 }}>
+          Architecture is the structural expression of your non-functional priorities. When you change your NFRs, you often change your architecture.
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MappingTable = () => (
+  <div style={{ overflowX: "auto" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+      <thead>
+        <tr>
+          {["Architectural Layer", "Typical Decisions", "Example NFRs Impacted"].map(h => (
+            <th key={h} style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, padding: "10px 14px", textAlign: "left", borderBottom: `2px solid ${C.text}`, background: C.bgWarm }}>{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {mappingData.map((row, i) => {
+          const lc = LAYERS[row.layer];
+          return (
+            <tr key={i}>
+              <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.borderLight}`, verticalAlign: "top" }}>
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: lc.color, marginRight: 8, verticalAlign: "middle" }} />
+                {row.name}
+              </td>
+              <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary, verticalAlign: "top" }}>{row.decisions}</td>
+              <td style={{ padding: "10px 14px", borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary, verticalAlign: "top" }}>{row.nfrs}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+);
+
+const WhyItMatters = () => {
+  const reasons = [
+    { title: "Write Better NFRs", desc: "Understanding architecture enables students to write meaningful, specific non-functional requirements." },
+    { title: "Evaluate Trade-offs", desc: "Weigh decisions around cost, performance, sustainability, and technical debt." },
+    { title: "Think Long-Term", desc: "Consider long-term maintainability and how today's choices affect tomorrow's system." },
+    { title: "Speak the Language", desc: "Communicate confidently with engineers, architects, and technical stakeholders." },
+  ];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12, marginTop: 20 }}>
+      {reasons.map((r, i) => (
+        <div key={i} style={{ background: C.bgWarm, border: `1px solid ${C.border}`, borderRadius: 6, padding: 16, transition: "all 0.15s" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.amber; e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "none"; }}
+        >
+          <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{r.title}</div>
+          <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>{r.desc}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const Quiz = () => {
+  const [currentQ, setCurrentQ] = useState(0);
+  const [score, setScore] = useState(0);
+  const [answered, setAnswered] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [finished, setFinished] = useState(false);
+
+  const q = quizData[currentQ];
+
+  const handleSelect = (idx) => {
+    if (answered) return;
+    setAnswered(true);
+    setSelected(idx);
+    if (idx === q.correct) setScore(s => s + 1);
+  };
+
+  const handleNext = () => {
+    if (currentQ + 1 >= quizData.length) {
+      setFinished(true);
+    } else {
+      setCurrentQ(c => c + 1);
+      setAnswered(false);
+      setSelected(null);
+    }
+  };
+
+  const handleRestart = () => {
+    setCurrentQ(0);
+    setScore(0);
+    setAnswered(false);
+    setSelected(null);
+    setFinished(false);
+  };
+
+  if (finished) {
+    const pct = Math.round((score / quizData.length) * 100);
+    const msg = pct >= 90 ? "Outstanding! You've mastered the fundamentals."
+      : pct >= 70 ? "Great job! Review the areas you missed."
+      : pct >= 50 ? "Good start! Revisit the sections to strengthen your understanding."
+      : "Keep going! Explore each section and try again.";
+    return (
+      <div style={{ textAlign: "center", padding: "32px 0" }}>
+        <div style={{ fontFamily: SERIF, fontSize: 48, fontWeight: 700, color: C.amber }}>{pct}%</div>
+        <div style={{ fontSize: 15, color: C.textSecondary, marginBottom: 16 }}>{score}/{quizData.length} correct — {msg}</div>
+        <button onClick={handleRestart} style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, padding: "8px 24px", borderRadius: 3, border: `1px solid ${C.amber}`, background: "transparent", color: C.amber, cursor: "pointer" }}>Try Again</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Progress */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+        {quizData.map((_, i) => (
+          <div key={i} style={{ width: 28, height: 3, borderRadius: 2, background: i < currentQ ? C.teal : i === currentQ ? C.amber : C.borderLight }} />
+        ))}
+      </div>
+      {/* Question */}
+      <div style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, marginBottom: 16, lineHeight: 1.4 }}>{q.q}</div>
+      {/* Options */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+        {q.opts.map((opt, i) => {
+          let bg = C.surface, border = C.border, color = C.text;
+          if (answered && i === q.correct) { bg = C.tealLight; border = C.teal; color = C.teal; }
+          else if (answered && i === selected && i !== q.correct) { bg = C.redLight; border = C.red; color = C.red; }
+          return (
+            <button key={i} onClick={() => handleSelect(i)} style={{
+              fontFamily: SANS, fontSize: 14, textAlign: "left", padding: "10px 14px",
+              borderRadius: 4, border: `1px solid ${border}`, background: bg,
+              color, cursor: answered ? "default" : "pointer", transition: "all 0.15s",
+            }}>{opt}</button>
+          );
+        })}
+      </div>
+      {/* Feedback */}
+      {answered && (
+        <div style={{
+          fontSize: 13, padding: "10px 14px", borderRadius: 4, marginBottom: 12, lineHeight: 1.5,
+          background: selected === q.correct ? C.tealLight : C.redLight,
+          border: `1px solid ${selected === q.correct ? C.teal : C.red}`,
+          color: selected === q.correct ? C.teal : C.red,
+        }}>{selected === q.correct ? q.good : q.bad}</div>
+      )}
+      {answered && (
+        <button onClick={handleNext} style={{
+          fontFamily: SANS, fontSize: 13, fontWeight: 600, padding: "8px 20px",
+          borderRadius: 3, border: "none", background: C.text, color: C.bg,
+          cursor: "pointer",
+        }}>{currentQ + 1 >= quizData.length ? "See Results" : "Next Question →"}</button>
+      )}
+    </div>
+  );
+};
+
+// ─── Main App ─────────────────────────────────────
+
+const App = () => {
+  const [activeTab, setActiveTab] = useState("layers");
+  const [openLayer, setOpenLayer] = useState(null);
+
+  const tabs = [
+    { id: "layers", label: "Architectural Layers" },
+    { id: "nfrs", label: "NFR Catalog" },
+    { id: "relationship", label: "NFR \u2194 Architecture" },
+    { id: "mapping", label: "Layer Mapping" },
+    { id: "quiz", label: "Test Yourself" },
+  ];
+
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 24px 80px" }}>
+      {/* Title */}
+      <div style={{ fontFamily: SERIF, fontSize: 36, fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.01em", color: C.text, marginBottom: 8 }}>
+        Architecture & NFR Explorer
+      </div>
+      <div style={{ fontFamily: SERIF, fontWeight: 300, fontSize: 20, lineHeight: 1.45, color: C.textSecondary, marginBottom: 12 }}>
+        Explore the structural layers of modern systems and discover how non-functional requirements shape every architectural decision.
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+        <Tag>Interactive</Tag>
+        <Tag>Systems Architecture</Tag>
+        <Tag>NFRs</Tag>
+      </div>
+
+      <ThickRule />
+
+      {/* Architecture overview diagram */}
+      <ArchDiagram />
+
+      <Rule />
+
+      {/* Tab nav */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 28 }}>
+        {tabs.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            fontFamily: SANS, fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 400,
+            padding: "6px 14px", borderRadius: 3, cursor: "pointer",
+            border: `1px solid ${activeTab === tab.id ? C.text : C.border}`,
+            background: activeTab === tab.id ? C.text : "transparent",
+            color: activeTab === tab.id ? C.bg : C.textSecondary,
+            transition: "all 0.15s",
+          }}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* ── Layers ── */}
+      {activeTab === "layers" && (
+        <div>
+          <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 4 }}>Section 01</div>
+          <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 6 }}>Core Architectural Layers</div>
+          <div style={{ fontSize: 15, color: C.textSecondary, marginBottom: 24, lineHeight: 1.55 }}>Every modern system is organized into distinct layers, each with unique responsibilities. Click each layer to explore its role, decisions, and the NFRs it impacts.</div>
+          {layerData.map(layer => (
+            <LayerCard key={layer.id} layer={layer}
+              isOpen={openLayer === layer.id}
+              onToggle={() => setOpenLayer(openLayer === layer.id ? null : layer.id)} />
+          ))}
+        </div>
+      )}
+
+      {/* ── NFRs ── */}
+      {activeTab === "nfrs" && (
+        <div>
+          <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 4 }}>Section 02</div>
+          <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 6 }}>Non-Functional Requirements</div>
+          <div style={{ fontSize: 15, color: C.textSecondary, marginBottom: 24, lineHeight: 1.55 }}>NFRs describe <em>how well</em> a system performs — not <em>what</em> it does. They are also known as quality attributes or architectural requirements.</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+            {nfrData.map((nfr, i) => <NFRCard key={i} nfr={nfr} />)}
+          </div>
+        </div>
+      )}
+
+      {/* ── Relationship ── */}
+      {activeTab === "relationship" && (
+        <div>
+          <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 4 }}>Section 03</div>
+          <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 6 }}>How NFRs Shape Architecture</div>
+          <div style={{ fontSize: 15, color: C.textSecondary, marginBottom: 24, lineHeight: 1.55 }}>Functional requirements drive features. Non-functional requirements drive architecture. Select a scenario to see how an NFR priority leads to specific architectural decisions across layers.</div>
+          <ScenarioExplorer />
+        </div>
+      )}
+
+      {/* ── Mapping ── */}
+      {activeTab === "mapping" && (
+        <div>
+          <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 4 }}>Section 04</div>
+          <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 6 }}>Layer ↔ NFR Mapping</div>
+          <div style={{ fontSize: 15, color: C.textSecondary, marginBottom: 24, lineHeight: 1.55 }}>A quick reference showing which architectural decisions happen at each layer and the NFRs they directly influence.</div>
+          <MappingTable />
+          <WhyItMatters />
+        </div>
+      )}
+
+      {/* ── Quiz ── */}
+      {activeTab === "quiz" && (
+        <div>
+          <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.textMuted, marginBottom: 4 }}>Section 05</div>
+          <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 6 }}>Test Your Understanding</div>
+          <div style={{ fontSize: 15, color: C.textSecondary, marginBottom: 24, lineHeight: 1.55 }}>Put your knowledge to the test. See how well you understand the relationship between architecture and NFRs.</div>
+          <div style={{ background: C.bgWarm, border: `1px solid ${C.border}`, borderRadius: 6, padding: "24px" }}>
+            <Quiz />
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <Rule />
+      <div style={{ textAlign: "center", fontSize: 12, color: C.textCaption }}>
+        Architecture & NFR Explorer — An interactive learning resource for systems architecture students.
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+</body>
+</html>
