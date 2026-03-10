@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Architecture Cost Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..900;1,8..60,300..900&family=Source+Sans+3:wght@300;400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+:root {
+  --bg: #faf8f5;
+  --bg-card: #f3f1ec;
+  --bg-hover: #edeae3;
+  --border: #e0ddd5;
+  --border-mid: #ccc9c0;
+  --text-primary: #1a1815;
+  --text-sec: #5c574f;
+  --text-cap: #8c8780;
+
+  --c-perf: #b5621e;
+  --c-perf-bg: #fdf3e8;
+  --c-avail: #2a5298;
+  --c-avail-bg: #e8eef8;
+  --c-scale: #1e7a5a;
+  --c-scale-bg: #e6f4ee;
+  --c-secure: #5e3d9e;
+  --c-secure-bg: #f0ecf8;
+  --c-cost: #b03030;
+  --c-cost-bg: #fce8e8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Source Sans 3', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.site-header {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 32px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-cap);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eyebrow::before {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--text-cap);
+}
+
+h1 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font-size: 17px;
+  color: var(--text-sec);
+  max-width: 700px;
+  line-height: 1.65;
+}
+
+.main-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
+}
+
+/* Controls Panel */
+.controls-panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  height: fit-content;
+  position: sticky;
+  top: 24px;
+}
+
+.panel-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.slider-group {
+  margin-bottom: 24px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.slider-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.slider-value {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.slider-desc {
+  font-size: 12px;
+  color: var(--text-cap);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  appearance: none;
+  background: var(--bg-card);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+/* Preset Buttons */
+.presets {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.presets-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-cap);
+  margin-bottom: 12px;
+}
+
+.preset-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.preset-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-mid);
+}
+
+.preset-btn span {
+  display: block;
+  font-size: 11px;
+  color: var(--text-cap);
+  margin-top: 2px;
+}
+
+/* Visualization Area */
+.viz-area {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Cost Summary */
+.cost-summary {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.cost-item {
+  text-align: center;
+  padding: 16px 12px;
+  background: var(--bg-card);
+  border-radius: 8px;
+}
+
+.cost-item-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-cap);
+  margin-bottom: 8px;
+}
+
+.cost-item-value {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cost-item-unit {
+  font-size: 12px;
+  color: var(--text-sec);
+  margin-top: 4px;
+}
+
+.cost-total {
+  background: var(--text-primary);
+}
+
+.cost-total .cost-item-label,
+.cost-total .cost-item-unit {
+  color: rgba(255,255,255,0.7);
+}
+
+.cost-total .cost-item-value {
+  color: white;
+}
+
+/* Architecture Diagram */
+.arch-diagram {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.arch-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.arch-svg {
+  width: 100%;
+  min-height: 400px;
+}
+
+/* Insights Panel */
+.insights-panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.insights-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.insight-card {
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border-left: 4px solid;
+}
+
+.insight-card:last-child {
+  margin-bottom: 0;
+}
+
+.insight-card h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.insight-card p {
+  font-size: 13px;
+  color: var(--text-sec);
+  line-height: 1.55;
+}
+
+.insight-perf { background: var(--c-perf-bg); border-color: var(--c-perf); }
+.insight-perf h4 { color: var(--c-perf); }
+
+.insight-avail { background: var(--c-avail-bg); border-color: var(--c-avail); }
+.insight-avail h4 { color: var(--c-avail); }
+
+.insight-scale { background: var(--c-scale-bg); border-color: var(--c-scale); }
+.insight-scale h4 { color: var(--c-scale); }
+
+.insight-secure { background: var(--c-secure-bg); border-color: var(--c-secure); }
+.insight-secure h4 { color: var(--c-secure); }
+
+/* NFR Impact Grid */
+.nfr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.nfr-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.nfr-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.nfr-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.nfr-card-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nfr-bar-wrap {
+  height: 8px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.nfr-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.nfr-card-desc {
+  font-size: 11px;
+  color: var(--text-cap);
+  line-height: 1.45;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-sec);
+}
+
+.legend-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsibility Matrix */
+.responsibility-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.responsibility-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.responsibility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.responsibility-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.responsibility-card h5 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.responsibility-card p {
+  font-size: 11px;
+  color: var(--text-sec);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .layout-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .controls-panel {
+    position: static;
+  }
+  
+  .cost-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  h1 { font-size: 28px; }
+  .cost-summary { grid-template-columns: 1fr; }
+  .nfr-grid { grid-template-columns: 1fr; }
+  .responsibility-grid { grid-template-columns: 1fr; }
+}
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="eyebrow">Interactive Learning Tool</div>
+  <h1>System Architecture<br>Cost Explorer</h1>
+  <p class="subtitle">Explore how non-functional requirements like scalability, availability, performance, and security impact system architecture, infrastructure costs, and design decisions.</p>
+</header>
+
+<main class="main-content">
+  <div class="layout-grid">
+    <!-- Controls Panel -->
+    <aside class="controls-panel">
+      <h2 class="panel-title">Requirements Sliders</h2>
+      
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Concurrent Users</span>
+          <span class="slider-value" id="users-value" style="background: var(--c-scale-bg); color: var(--c-scale);">1,000</span>
+        </div>
+        <div class="slider-desc">How many users access the system simultaneously</div>
+        <input type="range" id="users-slider" min="0" max="6" value="1" oninput="updateVisualization()">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Response Time Target</span>
+          <span class="slider-value" id="latency-value" style="background: var(--c-perf-bg); color: var(--c-perf);">500ms</span>
+        </div>
+        <div class="slider-desc">Maximum acceptable response latency</div>
+        <input type="range" id="latency-slider" min="0" max="4" value="2" oninput="updateVisualization()">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Availability Target</span>
+          <span class="slider-value" id="avail-value" style="background: var(--c-avail-bg); color: var(--c-avail);">99%</span>
+        </div>
+        <div class="slider-desc">Required uptime percentage (SLA)</div>
+        <input type="range" id="avail-slider" min="0" max="4" value="1" oninput="updateVisualization()">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Data Volume</span>
+          <span class="slider-value" id="data-value" style="background: var(--c-secure-bg); color: var(--c-secure);">100 GB</span>
+        </div>
+        <div class="slider-desc">Total data storage requirements</div>
+        <input type="range" id="data-slider" min="0" max="5" value="1" oninput="updateVisualization()">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-header">
+          <span class="slider-label">Security Level</span>
+          <span class="slider-value" id="security-value" style="background: var(--c-secure-bg); color: var(--c-secure);">Standard</span>
+        </div>
+        <div class="slider-desc">Data sensitivity and compliance needs</div>
+        <input type="range" id="security-slider" min="0" max="3" value="1" oninput="updateVisualization()">
+      </div>
+      
+      <div class="presets">
+        <div class="presets-title">Quick Presets</div>
+        <button class="preset-btn" onclick="setPreset('startup')">
+          Startup MVP
+          <span>Low cost, basic reliability</span>
+        </button>
+        <button class="preset-btn" onclick="setPreset('enterprise')">
+          Enterprise SaaS
+          <span>High availability, strong security</span>
+        </button>
+        <button class="preset-btn" onclick="setPreset('fintech')">
+          Financial Services
+          <span>Ultra-low latency, compliance</span>
+        </button>
+        <button class="preset-btn" onclick="setPreset('viral')">
+          Viral Consumer App
+          <span>Massive scale, cost-optimized</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Visualization Area -->
+    <div class="viz-area">
+      <!-- Cost Summary -->
+      <div class="cost-summary">
+        <div class="cost-item">
+          <div class="cost-item-label">Compute</div>
+          <div class="cost-item-value" id="compute-servers">2</div>
+          <div class="cost-item-unit">servers</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-item-label">Storage</div>
+          <div class="cost-item-value" id="storage-amount">200</div>
+          <div class="cost-item-unit">GB total</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-item-label">Complexity</div>
+          <div class="cost-item-value" id="complexity-score">Low</div>
+          <div class="cost-item-unit">architecture</div>
+        </div>
+        <div class="cost-item cost-total">
+          <div class="cost-item-label">Est. Monthly Cost</div>
+          <div class="cost-item-value" id="total-cost">$500</div>
+          <div class="cost-item-unit">cloud infrastructure</div>
+        </div>
+      </div>
+
+      <!-- Architecture Diagram -->
+      <div class="arch-diagram">
+        <h3 class="arch-title">Live Architecture Visualization</h3>
+        
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-icon" style="background: var(--c-perf-bg); border: 1px solid var(--c-perf);">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--c-perf)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            Web/App Servers
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon" style="background: var(--c-avail-bg); border: 1px solid var(--c-avail);">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--c-avail)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            Load Balancer
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon" style="background: var(--c-scale-bg); border: 1px solid var(--c-scale);">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--c-scale)" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            Database
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon" style="background: var(--c-secure-bg); border: 1px solid var(--c-secure);">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--c-secure)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            Cache/CDN
+          </div>
+        </div>
+
+        <svg class="arch-svg" id="arch-svg" viewBox="0 0 700 420">
+          <!-- Will be populated by JavaScript -->
+        </svg>
+      </div>
+
+      <!-- NFR Impact Grid -->
+      <div class="arch-diagram">
+        <h3 class="arch-title">Non-Functional Requirements Impact</h3>
+        <div class="nfr-grid">
+          <div class="nfr-card">
+            <div class="nfr-card-header">
+              <div class="nfr-dot" style="background: var(--c-scale);"></div>
+              <span class="nfr-card-title">Scalability</span>
+            </div>
+            <div class="nfr-bar-wrap">
+              <div class="nfr-bar" id="nfr-scale-bar" style="background: var(--c-scale); width: 30%;"></div>
+            </div>
+            <div class="nfr-card-desc" id="nfr-scale-desc">Basic vertical scaling with single server instance.</div>
+          </div>
+          
+          <div class="nfr-card">
+            <div class="nfr-card-header">
+              <div class="nfr-dot" style="background: var(--c-perf);"></div>
+              <span class="nfr-card-title">Performance</span>
+            </div>
+            <div class="nfr-bar-wrap">
+              <div class="nfr-bar" id="nfr-perf-bar" style="background: var(--c-perf); width: 50%;"></div>
+            </div>
+            <div class="nfr-card-desc" id="nfr-perf-desc">Standard response times with basic optimization.</div>
+          </div>
+          
+          <div class="nfr-card">
+            <div class="nfr-card-header">
+              <div class="nfr-dot" style="background: var(--c-avail);"></div>
+              <span class="nfr-card-title">Availability</span>
+            </div>
+            <div class="nfr-bar-wrap">
+              <div class="nfr-bar" id="nfr-avail-bar" style="background: var(--c-avail); width: 40%;"></div>
+            </div>
+            <div class="nfr-card-desc" id="nfr-avail-desc">Single point of failure, basic monitoring.</div>
+          </div>
+          
+          <div class="nfr-card">
+            <div class="nfr-card-header">
+              <div class="nfr-dot" style="background: var(--c-secure);"></div>
+              <span class="nfr-card-title">Security</span>
+            </div>
+            <div class="nfr-bar-wrap">
+              <div class="nfr-bar" id="nfr-security-bar" style="background: var(--c-secure); width: 40%;"></div>
+            </div>
+            <div class="nfr-card-desc" id="nfr-security-desc">Standard encryption, basic access controls.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insights Panel -->
+      <div class="insights-panel">
+        <h3 class="insights-title">Architecture Insights</h3>
+        <div id="insights-container">
+          <!-- Populated by JavaScript -->
+        </div>
+        
+        <div class="responsibility-section">
+          <h4 class="responsibility-title">Responsibility Distribution</h4>
+          <div class="responsibility-grid" id="responsibility-grid">
+            <!-- Populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const USER_LEVELS = [100, 1000, 10000, 50000, 100000, 500000, 1000000];
+const LATENCY_LEVELS = ['2s', '1s', '500ms', '100ms', '50ms'];
+const AVAIL_LEVELS = ['95%', '99%', '99.9%', '99.95%', '99.99%'];
+const DATA_LEVELS = ['10 GB', '100 GB', '1 TB', '10 TB', '100 TB', '1 PB'];
+const SECURITY_LEVELS = ['Basic', 'Standard', 'Enhanced', 'Enterprise'];
+
+function formatNumber(num) {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
+  return num.toString();
+}
+
+function updateVisualization() {
+  const usersIdx = parseInt(document.getElementById('users-slider').value);
+  const latencyIdx = parseInt(document.getElementById('latency-slider').value);
+  const availIdx = parseInt(document.getElementById('avail-slider').value);
+  const dataIdx = parseInt(document.getElementById('data-slider').value);
+  const securityIdx = parseInt(document.getElementById('security-slider').value);
+
+  // Update slider values
+  document.getElementById('users-value').textContent = formatNumber(USER_LEVELS[usersIdx]);
+  document.getElementById('latency-value').textContent = LATENCY_LEVELS[latencyIdx];
+  document.getElementById('avail-value').textContent = AVAIL_LEVELS[availIdx];
+  document.getElementById('data-value').textContent = DATA_LEVELS[dataIdx];
+  document.getElementById('security-value').textContent = SECURITY_LEVELS[securityIdx];
+
+  // Calculate architecture needs
+  const arch = calculateArchitecture(usersIdx, latencyIdx, availIdx, dataIdx, securityIdx);
+  
+  // Update cost summary
+  document.getElementById('compute-servers').textContent = arch.servers;
+  document.getElementById('storage-amount').textContent = arch.storageDisplay;
+  document.getElementById('complexity-score').textContent = arch.complexity;
+  document.getElementById('total-cost').textContent = '$' + formatNumber(arch.monthlyCost);
+
+  // Update NFR bars
+  document.getElementById('nfr-scale-bar').style.width = arch.nfrScores.scale + '%';
+  document.getElementById('nfr-perf-bar').style.width = arch.nfrScores.perf + '%';
+  document.getElementById('nfr-avail-bar').style.width = arch.nfrScores.avail + '%';
+  document.getElementById('nfr-security-bar').style.width = arch.nfrScores.security + '%';
+
+  // Update NFR descriptions
+  document.getElementById('nfr-scale-desc').textContent = arch.nfrDescs.scale;
+  document.getElementById('nfr-perf-desc').textContent = arch.nfrDescs.perf;
+  document.getElementById('nfr-avail-desc').textContent = arch.nfrDescs.avail;
+  document.getElementById('nfr-security-desc').textContent = arch.nfrDescs.security;
+
+  // Update architecture diagram
+  renderArchDiagram(arch);
+
+  // Update insights
+  renderInsights(arch);
+
+  // Update responsibilities
+  renderResponsibilities(arch);
+}
+
+function calculateArchitecture(usersIdx, latencyIdx, availIdx, dataIdx, securityIdx) {
+  const users = USER_LEVELS[usersIdx];
+  
+  // Calculate servers needed
+  let baseServers = Math.ceil(users / 5000);
+  if (latencyIdx >= 3) baseServers = Math.ceil(baseServers * 1.5); // Low latency needs more
+  if (availIdx >= 2) baseServers = Math.max(baseServers, 2); // HA needs redundancy
+  if (availIdx >= 3) baseServers = Math.ceil(baseServers * 1.5);
+  baseServers = Math.max(1, Math.min(baseServers, 100));
+
+  // Calculate storage
+  const baseStorage = [10, 100, 1000, 10000, 100000, 1000000][dataIdx];
+  let totalStorage = baseStorage;
+  if (availIdx >= 2) totalStorage *= 2; // Replication
+  if (availIdx >= 4) totalStorage *= 1.5; // More replicas
+  if (securityIdx >= 2) totalStorage *= 1.2; // Audit logs
+
+  // Calculate cost
+  let monthlyCost = 0;
+  monthlyCost += baseServers * 150; // Compute
+  monthlyCost += (totalStorage / 100) * 23; // Storage per 100GB
+  if (availIdx >= 2) monthlyCost += 200; // Load balancer
+  if (availIdx >= 3) monthlyCost += 500; // Multi-AZ
+  if (latencyIdx >= 3) monthlyCost += 300; // CDN
+  if (latencyIdx >= 4) monthlyCost += 500; // Edge computing
+  if (securityIdx >= 2) monthlyCost += 400; // WAF, encryption
+  if (securityIdx >= 3) monthlyCost += 1500; // Compliance, HSM
+
+  // Complexity
+  let complexityScore = usersIdx + latencyIdx + availIdx + securityIdx;
+  let complexity = 'Low';
+  if (complexityScore >= 6) complexity = 'Medium';
+  if (complexityScore >= 10) complexity = 'High';
+  if (complexityScore >= 14) complexity = 'Very High';
+
+  // NFR Scores
+  const nfrScores = {
+    scale: Math.min(100, 20 + usersIdx * 13),
+    perf: Math.min(100, 20 + latencyIdx * 20),
+    avail: Math.min(100, 20 + availIdx * 20),
+    security: Math.min(100, 25 + securityIdx * 25)
+  };
+
+  // NFR Descriptions
+  const nfrDescs = {
+    scale: getScaleDesc(usersIdx),
+    perf: getPerfDesc(latencyIdx),
+    avail: getAvailDesc(availIdx),
+    security: getSecurityDesc(securityIdx)
+  };
+
+  return {
+    users,
+    servers: baseServers,
+    storageGB: totalStorage,
+    storageDisplay: totalStorage >= 1000 ? (totalStorage / 1000).toFixed(0) + ' TB' : totalStorage + ' GB',
+    monthlyCost: Math.round(monthlyCost),
+    complexity,
+    hasLoadBalancer: availIdx >= 2 || usersIdx >= 3,
+    hasCDN: latencyIdx >= 3,
+    hasCache: latencyIdx >= 2 || usersIdx >= 3,
+    hasReplica: availIdx >= 2,
+    hasMultiRegion: availIdx >= 4,
+    hasWAF: securityIdx >= 2,
+    hasHSM: securityIdx >= 3,
+    nfrScores,
+    nfrDescs,
+    usersIdx,
+    latencyIdx,
+    availIdx,
+    dataIdx,
+    securityIdx
+  };
+}
+
+function getScaleDesc(idx) {
+  const descs = [
+    'Single server handles all traffic. No auto-scaling.',
+    'Basic vertical scaling with single server instance.',
+    'Horizontal scaling with multiple app servers.',
+    'Auto-scaling groups respond to demand spikes.',
+    'Distributed architecture across availability zones.',
+    'Global distribution with regional deployments.',
+    'Massive scale with sharding and edge computing.'
+  ];
+  return descs[idx] || descs[0];
+}
+
+function getPerfDesc(idx) {
+  const descs = [
+    'Basic response times acceptable for internal tools.',
+    'Standard performance for typical web applications.',
+    'Optimized with caching and query tuning.',
+    'CDN, in-memory caching, optimized queries.',
+    'Edge computing, aggressive caching, sub-100ms responses.'
+  ];
+  return descs[idx] || descs[0];
+}
+
+function getAvailDesc(idx) {
+  const descs = [
+    'Single point of failure, basic monitoring. ~18 days downtime/year.',
+    'Basic redundancy, manual failover. ~3.6 days downtime/year.',
+    'Active-passive failover, health checks. ~8.7 hours downtime/year.',
+    'Active-active, auto-failover, multi-AZ. ~4.4 hours downtime/year.',
+    'Global redundancy, chaos engineering, zero-downtime deployments. ~52 min downtime/year.'
+  ];
+  return descs[idx] || descs[0];
+}
+
+function getSecurityDesc(idx) {
+  const descs = [
+    'HTTPS, basic authentication. Suitable for public data.',
+    'Standard encryption, RBAC, basic access controls.',
+    'WAF, encryption at rest, audit logging, vulnerability scanning.',
+    'HSM, compliance (SOC2/HIPAA), zero-trust, penetration testing.'
+  ];
+  return descs[idx] || descs[0];
+}
+
+function renderArchDiagram(arch) {
+  const svg = document.getElementById('arch-svg');
+  let html = '';
+
+  // Define colors
+  const colors = {
+    perf: { fill: '#fdf3e8', stroke: '#b5621e' },
+    avail: { fill: '#e8eef8', stroke: '#2a5298' },
+    scale: { fill: '#e6f4ee', stroke: '#1e7a5a' },
+    secure: { fill: '#f0ecf8', stroke: '#5e3d9e' }
+  };
+
+  // Users
+  html += `
+    <g>
+      <rect x="20" y="170" width="80" height="80" rx="8" fill="#f3f1ec" stroke="#ccc9c0" stroke-width="1.5"/>
+      <text x="60" y="200" text-anchor="middle" font-family="Source Serif 4, serif" font-size="12" font-weight="600" fill="#1a1815">Users</text>
+      <text x="60" y="218" text-anchor="middle" font-family="Source Code Pro, monospace" font-size="11" fill="#5c574f">${formatNumber(arch.users)}</text>
+      <text x="60" y="235" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="10" fill="#8c8780">concurrent</text>
+    </g>
+  `;
+
+  let nextX = 130;
+
+  // CDN (if enabled)
+  if (arch.hasCDN) {
+    html += `
+      <g>
+        <path d="M${nextX},210 L${nextX + 30},210" stroke="#ccc9c0" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <rect x="${nextX + 35}" y="175" width="70" height="70" rx="8" fill="${colors.secure.fill}" stroke="${colors.secure.stroke}" stroke-width="1.5"/>
+        <text x="${nextX + 70}" y="202" text-anchor="middle" font-family="Source Serif 4, serif" font-size="11" font-weight="600" fill="${colors.secure.stroke}">CDN</text>
+        <text x="${nextX + 70}" y="218" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="9" fill="#5c574f">Edge Cache</text>
+        <text x="${nextX + 70}" y="232" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="9" fill="#8c8780">Global</text>
+      </g>
+    `;
+    nextX += 110;
+  }
+
+  // WAF (if enabled)
+  if (arch.hasWAF) {
+    html += `
+      <g>
+        <path d="M${nextX},210 L${nextX + 30},210" stroke="#ccc9c0" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <rect x="${nextX + 35}" y="180" width="60" height="60" rx="8" fill="${colors.secure.fill}" stroke="${colors.secure.stroke}" stroke-width="1.5"/>
+        <text x="${nextX + 65}" y="205" text-anchor="middle" font-family="Source Serif 4, serif" font-size="11" font-weight="600" fill="${colors.secure.stroke}">WAF</text>
+        <text x="${nextX + 65}" y="220" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="9" fill="#5c574f">Firewall</text>
+      </g>
+    `;
+    nextX += 100;
+  }
+
+  // Load Balancer (if enabled)
+  if (arch.hasLoadBalancer) {
+    html += `
+      <g>
+        <path d="M${nextX},210 L${nextX + 30},210" stroke="#ccc9c0" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <rect x="${nextX + 35}" y="175" width="70" height="70" rx="8" fill="${colors.avail.fill}" stroke="${colors.avail.stroke}" stroke-width="1.5"/>
+        <text x="${nextX + 70}" y="200" text-anchor="middle" font-family="Source Serif 4, serif" font-size="11" font-weight="600" fill="${colors.avail.stroke}">Load</text>
+        <text x="${nextX + 70}" y="215" text-anchor="middle" font-family="Source Serif 4, serif" font-size="11" font-weight="600" fill="${colors.avail.stroke}">Balancer</text>
+        <text x="${nextX + 70}" y="232" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="9" fill="#8c8780">Round Robin</text>
+      </g>
+    `;
+    nextX += 110;
+  } else {
+    html += `<path d="M${nextX},210 L${nextX + 40},210" stroke="#ccc9c0" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+    nextX += 45;
+  }
+
+  // App Servers
+  const serverRows = Math.min(Math.ceil(arch.servers / 4), 3);
+  const serversPerRow = Math.min(arch.servers, 4);
+  const serverBoxHeight = serverRows * 55 + 30;
+  const serverStartY = 210 - serverBoxHeight / 2;
+
+  html += `
+    <g>
+      <rect x="${nextX}" y="${serverStartY}" width="100" height="${serverBoxHeight}" rx="8" fill="${colors.perf.fill}" stroke="${colors.perf.stroke}" stroke-width="1.5"/>
+      <text x="${nextX + 50}" y="${serverStartY + 18}" text-anchor="middle" font-family="Source Code Pro, monospace" font-size="9" font-weight="500" fill="${colors.perf.stroke}">APP SERVERS</text>
+  `;
+
+  for (let row = 0; row < serverRows; row++) {
+    for (let col = 0; col < serversPerRow; col++) {
+      const serverNum = row * serversPerRow + col + 1;
+      if (serverNum <= arch.servers) {
+        const sx = nextX + 12 + col * 22;
+        const sy = serverStartY + 28 + row * 50;
+        html += `
+          <rect x="${sx}" y="${sy}" width="18" height="40" rx="3" fill="white" stroke="${colors.perf.stroke}" stroke-width="1"/>
+          <line x1="${sx + 4}" y1="${sy + 8}" x2="${sx + 14}" y2="${sy + 8}" stroke="${colors.perf.stroke}" stroke-width="1" opacity="0.5"/>
+          <line x1="${sx + 4}" y1="${sy + 14}" x2="${sx + 14}" y2="${sy + 14}" stroke="${colors.perf.stroke}" stroke-width="1" opacity="0.5"/>
+          <circle cx="${sx + 9}" cy="${sy + 34}" r="3" fill="${colors.perf.stroke}" opacity="0.7"/>
+        `;
+      }
+    }
+  }
+
+  if (arch.servers > 12) {
+    html += `<text x="${nextX + 50}" y="${serverStartY + serverBoxHeight - 8}" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="9" fill="#8c8780">+${arch.servers - 12} more</text>`;
+  }
+
+  html += `</g>`;
+  nextX += 110;
+
+  // Cache (if enabled)
+  if (arch.hasCache) {
+    html += `
+      <g>
+        <path d="M${nextX - 5},210 L${nextX + 25},210" stroke="#ccc9c0" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <rect x="${nextX + 30}" y="180" width="60" height="60" rx="8" fill="${colors.scale.fill}" stroke="${colors.scale.stroke}" stroke-width="1.5"/>
+        <text x="${nextX + 60}" y="205" text-anchor="middle" font-family="Source Serif 4, serif" font-size="11" font-weight="600" fill="${colors.scale.stroke}">Cache</text>
+        <text x="${nextX + 60}" y="220" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="9" fill="#5c574f">Redis</text>
+      </g>
+    `;
+    nextX += 100;
+  }
+
+  // Database
+  html += `
+    <g>
+      <path d="M${nextX - 5},210 L${nextX + 25},210" stroke="#ccc9c0" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <rect x="${nextX + 30}" y="155" width="80" height="110" rx="8" fill="${colors.scale.fill}" stroke="${colors.scale.stroke}" stroke-width="1.5"/>
+      <text x="${nextX + 70}" y="175" text-anchor="middle" font-family="Source Code Pro, monospace" font-size="9" font-weight="500" fill="${colors.scale.stroke}">DATABASE</text>
+      
+      <!-- Primary DB -->
+      <ellipse cx="${nextX + 70}" cy="195" rx="25" ry="8" fill="white" stroke="${colors.scale.stroke}" stroke-width="1"/>
+      <path d="M${nextX + 45},195 v20 a25,8 0 0,0 50,0 v-20" fill="white" stroke="${colors.scale.stroke}" stroke-width="1"/>
+      <text x="${nextX + 70}" y="210" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="8" fill="#5c574f">Primary</text>
+  `;
+
+  if (arch.hasReplica) {
+    html += `
+      <!-- Replica DB -->
+      <ellipse cx="${nextX + 70}" cy="238" rx="20" ry="6" fill="white" stroke="${colors.scale.stroke}" stroke-width="1" opacity="0.7"/>
+      <path d="M${nextX + 50},238 v15 a20,6 0 0,0 40,0 v-15" fill="white" stroke="${colors.scale.stroke}" stroke-width="1" opacity="0.7"/>
+      <text x="${nextX + 70}" y="250" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="7" fill="#8c8780">Replica</text>
+    `;
+  }
+
+  html += `
+      <text x="${nextX + 70}" y="${arch.hasReplica ? 270 : 250}" text-anchor="middle" font-family="Source Code Pro, monospace" font-size="9" fill="#5c574f">${arch.storageDisplay}</text>
+    </g>
+  `;
+
+  // Multi-region indicator
+  if (arch.hasMultiRegion) {
+    html += `
+      <g>
+        <rect x="20" y="290" width="660" height="40" rx="6" fill="none" stroke="${colors.avail.stroke}" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <text x="350" y="315" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="11" fill="${colors.avail.stroke}">Multi-Region Deployment - Active-Active Configuration</text>
+      </g>
+    `;
+  }
+
+  // HSM indicator
+  if (arch.hasHSM) {
+    html += `
+      <g>
+        <rect x="580" y="60" width="100" height="50" rx="6" fill="${colors.secure.fill}" stroke="${colors.secure.stroke}" stroke-width="1.5"/>
+        <text x="630" y="82" text-anchor="middle" font-family="Source Serif 4, serif" font-size="10" font-weight="600" fill="${colors.secure.stroke}">HSM</text>
+        <text x="630" y="97" text-anchor="middle" font-family="Source Sans 3, sans-serif" font-size="9" fill="#5c574f">Key Mgmt</text>
+      </g>
+    `;
+  }
+
+  // Title label
+  html += `
+    <text x="20" y="30" font-family="Source Code Pro, monospace" font-size="10" font-weight="500" fill="#8c8780" letter-spacing="0.08em">ARCHITECTURE: ${arch.complexity.toUpperCase()}</text>
+    <text x="20" y="50" font-family="Source Sans 3, sans-serif" font-size="12" fill="#5c574f">${arch.servers} server${arch.servers > 1 ? 's' : ''} | ${arch.storageDisplay} storage | $${formatNumber(arch.monthlyCost)}/mo</text>
+  `;
+
+  svg.innerHTML = html;
+}
+
+function renderInsights(arch) {
+  const container = document.getElementById('insights-container');
+  let html = '';
+
+  // Performance insight
+  if (arch.latencyIdx >= 3) {
+    html += `
+      <div class="insight-card insight-perf">
+        <h4>Performance Optimization Active</h4>
+        <p>CDN and caching layers reduce latency for global users. Consider edge computing for sub-50ms responses in critical paths.</p>
+      </div>
+    `;
+  }
+
+  // Availability insight
+  if (arch.availIdx >= 2) {
+    html += `
+      <div class="insight-card insight-avail">
+        <h4>High Availability Configuration</h4>
+        <p>Load balancing and database replication eliminate single points of failure. ${arch.hasMultiRegion ? 'Multi-region deployment provides disaster recovery.' : 'Consider multi-region for disaster recovery.'}</p>
+      </div>
+    `;
+  }
+
+  // Scale insight
+  if (arch.usersIdx >= 3) {
+    html += `
+      <div class="insight-card insight-scale">
+        <h4>Horizontal Scaling Enabled</h4>
+        <p>Auto-scaling groups handle traffic spikes. ${arch.servers} servers distributed across availability zones ensure capacity for ${formatNumber(arch.users)} concurrent users.</p>
+      </div>
+    `;
+  }
+
+  // Security insight
+  if (arch.securityIdx >= 2) {
+    html += `
+      <div class="insight-card insight-secure">
+        <h4>Enhanced Security Posture</h4>
+        <p>${arch.hasWAF ? 'Web Application Firewall protects against common attacks. ' : ''}${arch.hasHSM ? 'Hardware Security Module manages encryption keys for compliance.' : 'Encryption at rest and in transit protects sensitive data.'}</p>
+      </div>
+    `;
+  }
+
+  // Cost insight
+  if (arch.monthlyCost > 5000) {
+    html += `
+      <div class="insight-card insight-perf">
+        <h4>Cost Optimization Opportunity</h4>
+        <p>At $${formatNumber(arch.monthlyCost)}/month, consider reserved instances (30-50% savings) or spot instances for non-critical workloads.</p>
+      </div>
+    `;
+  }
+
+  // Default insight if none match
+  if (html === '') {
+    html = `
+      <div class="insight-card insight-scale">
+        <h4>Starter Configuration</h4>
+        <p>This basic setup is cost-effective for MVPs and internal tools. As requirements grow, use the sliders to explore how architecture must evolve.</p>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function renderResponsibilities(arch) {
+  const container = document.getElementById('responsibility-grid');
+  
+  const responsibilities = {
+    yourTeam: [],
+    cloudProvider: [],
+    shared: []
+  };
+
+  // Always your responsibility
+  responsibilities.yourTeam.push('Application code and business logic');
+  responsibilities.yourTeam.push('Data modeling and schema design');
+  
+  // Cloud provider responsibilities
+  responsibilities.cloudProvider.push('Physical infrastructure and power');
+  responsibilities.cloudProvider.push('Network backbone and connectivity');
+
+  // Shared based on architecture
+  if (arch.hasLoadBalancer) {
+    responsibilities.cloudProvider.push('Load balancer availability');
+    responsibilities.yourTeam.push('Load balancer configuration');
+  }
+
+  if (arch.securityIdx >= 2) {
+    responsibilities.shared.push('Security monitoring and response');
+    responsibilities.yourTeam.push('Access control policies');
+  }
+
+  if (arch.availIdx >= 2) {
+    responsibilities.shared.push('Disaster recovery planning');
+    responsibilities.cloudProvider.push('Infrastructure redundancy');
+  }
+
+  if (arch.hasCDN) {
+    responsibilities.cloudProvider.push('CDN edge node availability');
+    responsibilities.yourTeam.push('Cache invalidation strategy');
+  }
+
+  let html = `
+    <div class="responsibility-card">
+      <h5>Your Team Owns</h5>
+      <p>${responsibilities.yourTeam.slice(0, 3).join(', ')}</p>
+    </div>
+    <div class="responsibility-card">
+      <h5>Cloud Provider Owns</h5>
+      <p>${responsibilities.cloudProvider.slice(0, 3).join(', ')}</p>
+    </div>
+  `;
+
+  if (responsibilities.shared.length > 0) {
+    html += `
+      <div class="responsibility-card" style="grid-column: 1 / -1;">
+        <h5>Shared Responsibility</h5>
+        <p>${responsibilities.shared.join(', ')}</p>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function setPreset(preset) {
+  const presets = {
+    startup: { users: 1, latency: 2, avail: 1, data: 1, security: 1 },
+    enterprise: { users: 3, latency: 2, avail: 3, data: 3, security: 3 },
+    fintech: { users: 3, latency: 4, avail: 4, data: 3, security: 3 },
+    viral: { users: 5, latency: 2, avail: 2, data: 4, security: 1 }
+  };
+
+  const p = presets[preset];
+  document.getElementById('users-slider').value = p.users;
+  document.getElementById('latency-slider').value = p.latency;
+  document.getElementById('avail-slider').value = p.avail;
+  document.getElementById('data-slider').value = p.data;
+  document.getElementById('security-slider').value = p.security;
+
+  updateVisualization();
+}
+
+// Initialize
+updateVisualization();
+</script>
+
+</body>
+</html>
